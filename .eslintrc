@@ -1,0 +1,14 @@
+{
+  "extends": ["wesbos"],
+  "rules": {
+    "prettier/prettier": [
+      "error",
+      {
+        "endOfLine": "auto",
+        "semi": false,
+        "singleQuote": true,
+        "trailingComma": "none"
+      }
+    ]
+  }
+}
