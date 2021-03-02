@@ -7,10 +7,6 @@ This is a sample [Next.js](https://nextjs.org/) project bootstrapped with [`crea
   * If you just need suport for staticically generated pages via `next export` then check out [Azure Static Web Apps](https://docs.microsoft.com/en-us/azure/static-web-apps/deploy-nextjs) instead
 * A fully functioning CI/CD pipeline for building and deploying your Next app to Azure app services via Azure DevOps pipelines
 
-## Demo
-
-TODO
-
 ## Getting started
 
 The intention is not for this repo to be cloned and used to bootstrap other projects, but to act as a sample that can be copied from as needed into existing Next projects.
@@ -23,7 +19,7 @@ This guide will focus on:
 
 ### Azure Portal setup
 
-N.B. The setup of the required resources could be scripted (and after writing out the below, scripting it is on my list TODO list 😅), but only manual steps will be described to get setup via the Azure Portal. You may also have your own conventions or best practices that you wish to follow so it's easier to stick to the basic requirements here and you can feel free to adapt and automate as you wish.
+> N.B. The setup of the required resources could be scripted (and after writing out the below, scripting it is on my list TODO list 😅), but only manual steps will be described to get setup via the Azure Portal. You may also have your own conventions or best practices that you wish to follow so it's easier to stick to the basic requirements here and you can feel free to adapt and automate as you wish.
 
 An assumption is made before we begin that you have an Azure account and subscription in which to create the following resources.
 
@@ -41,51 +37,69 @@ An assumption is made before we begin that you have an Azure account and subscri
 * Create a new app service plan and select your preferred SKU and size
   * To get the most out of the pipeline you will need a SKU that provides you with deployment slots so at least `S1` is recommended, but the pipeline can be amended if you don't need or want slots
 * Add monitoring with application insights
-  * This is optional, but recommended - it is assumed in the sample app that you will use application insights so if you don't you will need to make some adjustments
+  * This is optional, but recommended - it is assumed in the sample app that you will use application insights so if you don't you will need to make some adjustments and not follow some of the other related steps below
 * Add tags if you wish and create the app service
 
 #### App service configuration
 
-N.B. We are going to set our app service up to support multiple environments using deployment slots, and pushes to our `main` branch will deploy into a `uat` slot with [auto swap](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#configure-auto-swap) enabled into the `production` slot. This may or may not meet your wants and needs, but if this is the first time following along try it out and then you can adjust as you want once things are up and running.
+> N.B. We are going to setup our app service to support multiple environments using deployment slots, and pushes to our `main` branch will deploy into a `uat` slot with [auto swap](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#configure-auto-swap) enabled into the `production` slot. This may or may not meet your wants and needs, but if this is the first time following along try it out and then you can adjust as you want once things are up and running.
 
 * After your app service has been created, navigate to it in the portal
 * Select the Configuration blade
-  * Under Application settings add the following as non-slot settings (remember to click Save and Continue!)
+  * Under Application settings add the following as **non-slot settings** (remember to click Save and Continue!)
     * `WEBSITE_SWAP_WARMUP_PING_STATUSES` = `200`
-  * And the following as slot settings
+  * And the following as **slot settings**
     * `BASE_URL` = {URL of your app service}
     * `APP_ENV` = `production`
+  * Rename the following setting and make it a **slot setting**
+    * `APPINSIGHTS_INSTRUMENTATIONKEY` to `NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY`
+  * Change the following setting to be a **slot settings**
+    * `APPLICATIONINSIGHTS_CONNECTION_STRING`
 * Select the Deployment slots blade
-  * Add the following deployment slots, choosing not to clone settings
+  * Add the following deployment slots, choosing **not to clone** settings
     * `preview`
     * `build`
   * On each of these slots, go to the Configuration blade
-    * Under Application settings add (or change if it exists) the following as non-slot settings
+    * Under Application settings add (or change if it exists) the following as **non-slot settings**
       * `WEBSITE_NODE_DEFAULT_VERSION` = `12.13.0`
-  * And the following as slot settings
+  * And the following as **slot settings**
     * `BASE_URL` = {URL of the deployment slot}
     * `APP_ENV` = {Name of the slot e.g. `preview`}
 * Navigate back up to the main app service and select the Deployment slots blade again
-  * Add the following deployment slot, choosing to clone settings from the production (default) slot this time
+  * Add the following deployment slot, choosing to **clone settings** from the production (default) slot this time
     * `uat`
   * In the `uat` slot select the Configuration blade
-    * Under Application settings change the following slot settings
+    * Under Application settings change the following **slot settings**
       * `BASE_URL` = {URL of your `uat` deployment slot}
       * `APP_ENV` = `uat`
     * Under General settings > Deployment slot set
       * `Auto swap enabled` = `On`
       * `Auto swap deployment slot` = `production`
 
+You should now have the app service setup and configured with four deployment slots:
+
+* `production` (default)
+* `uat`
+* `build`
+* `preview`
+
 ### App setup
 
 * Copy across the following files from this repo
   * `.azure/**`
+  * `src/components/**`
   * `server.js`
+* Add the following dependencies
+  * `@microsoft/applicationinsights-react-js`
+  * `@microsoft/applicationinsights-web`
+  * `applicationinsights`
 * Amend the following files (use the files in this repo as an example)
   * `next.config.js`
     * Set [compress](https://nextjs.org/docs/api-reference/next.config.js/compression) using the environment variable `NEXT_COMPRESS`
   * `package.json`
     * Change your `start` script to `node server.js`
+  * [Custom `App`](https://nextjs.org/docs/advanced-features/custom-app)
+    * Import the `AppInsightsContextProvider` component and wrap it around the `<Component />` element
 * Amend the Azure Pipelines yaml (`.azure/azure-pipelines.yml`)
   * Change the following variable values to match the names of the resources you have setup in Azure
     * `AzureAppService` = {Name of your app service}
@@ -94,6 +108,8 @@ N.B. We are going to set our app service up to support multiple environments usi
     * `AzureServiceConnection` = {Your choice of service connection name}
 * Commit and push your changes to your `develop` branch
   * Assuming you have a `develop` branch, or you can just use your `main` branch
+
+Your app should now be prepared for hosting in Azure app services.
 
 ### Azure pipelines setup
 
@@ -127,6 +143,7 @@ N.B. We are going to set our app service up to support multiple environments usi
       * `BASE_URL` = {URL of your `production` deployment slot}
       * `APP_ENV` = `production`
       * `AzureAppServiceSlot` = `uat`
+      * `NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY` = {Your application insights instrumentation key}
 * Go to Pipelines > Pipelines, and create a pipeline
   * Choose the relevant option for where your repo is located, and authorise as prompted
   * Once authorised, select your repository and authorise as prompted here also
@@ -134,4 +151,8 @@ N.B. We are going to set our app service up to support multiple environments usi
   * Select the branch and path to your `azure-pipelines.yml` file, and continue
   * Run the pipeline
 
-N.B. The first time the pipeline runs will be the slowest - the main things that slow the execution of the pipeline down is if this is the first time you have executed `yarn install` in the pipeline or on the app service (slot), or when new dependencies are added. The pipeline must run `yarn install` in the build step, but it also gets executed on the app service (slot) because the node server needs access to production node module dependencies, but deploying them via the pipeline is *extremely* slow. Caching is in place in the pipeline (based on the contents of the `yarn.lock` file) for subsequent runs, and if no changes are made then running `yarn install` on the app service (slot) takes no time at all.
+> N.B. The first time the pipeline runs will be the slowest - the main things that slow the execution of the pipeline down is if this is the first time you have executed `yarn install` in the pipeline or on the app service (slot), or when new dependencies are added.
+>
+> The pipeline must run `yarn install` in the build step, but it also gets executed on the app service (slot) because the node server needs access to production node module dependencies, but deploying them via the pipeline is *extremely* slow.
+>
+> Caching is in place in the pipeline (based on the contents of the `yarn.lock` file) for subsequent runs, and if no changes are made then running `yarn install` on the app service (slot) takes no time at all.

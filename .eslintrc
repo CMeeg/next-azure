@@ -1,6 +1,12 @@
 {
   "extends": ["wesbos"],
   "rules": {
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": ["~/"]
+      }
+    ],
     "prettier/prettier": [
       "error",
       {
@@ -9,6 +15,7 @@
         "singleQuote": true,
         "trailingComma": "none"
       }
-    ]
+    ],
+    "react/prop-types": "off"
   }
 }
