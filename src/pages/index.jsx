@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import { getCdnUrl } from '~/lib/utils'
 import styles from '~/styles/Home.module.css'
 
 export default function Home() {
@@ -6,7 +7,7 @@ export default function Home() {
     <div className={styles.container}>
       <Head>
         <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href={getCdnUrl('/favicon.ico')} />
       </Head>
 
       <main className={styles.main}>
@@ -57,7 +58,11 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
+          <img
+            src={getCdnUrl('/vercel.svg')}
+            alt="Vercel Logo"
+            className={styles.logo}
+          />
         </a>
       </footer>
     </div>
