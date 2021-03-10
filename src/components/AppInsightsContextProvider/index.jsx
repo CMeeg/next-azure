@@ -46,17 +46,27 @@ const AppInsightsContextProvider = ({ children }) => {
     const instrumentationKey =
       process.env.NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY
 
-    if (!isInitialised && instrumentationKey && router) {
-      initialise(instrumentationKey, router)
-
-      setInitialised(true)
+    if (!instrumentationKey || !!appInsights) {
+      return
     }
-  }, [isInitialised, router])
+
+    if (!router.isReady) {
+      return
+    }
+
+    initialise(instrumentationKey)
+
+    handleRouteChange(router.asPath)
+
+    setInitialised(true)
+  }, [router.asPath, router.isReady])
 
   useEffect(() => {
-    if (isInitialised) {
-      router.events.on('routeChangeComplete', handleRouteChange)
+    if (!isInitialised) {
+      return
     }
+
+    router.events.on('routeChangeComplete', handleRouteChange)
 
     return () => {
       router.events.off('routeChangeComplete', handleRouteChange)
