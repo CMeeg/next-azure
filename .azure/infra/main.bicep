@@ -8,12 +8,15 @@ var resourceNameSuffix = toLower('${projectName}-${environment}')
 
 var webAppName = 'app-${resourceNameSuffix}'
 
+var nodeVersion = '12.13.0'
+
 module webApp 'app-service.bicep' = {
   name: 'web-app'
   params: {
     location: location
     appServicePlanName: 'asp-${resourceNameSuffix}'
     appServiceName: webAppName
+    nodeVersion: nodeVersion
   }
 }
 
@@ -49,5 +52,6 @@ resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
     BASE_URL: 'https://${webAppServiceHostname}'
     NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
     NEXT_PUBLIC_CDN_URL: 'https://${cdnEndpointHostname}'
+    WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
   }
 }

@@ -23,6 +23,8 @@ param skuName string = 'F1'
 @minValue(1)
 param skuCapacity int = 1
 
+param nodeVersion string
+
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
   name: appServicePlanName
   location: location
@@ -48,7 +50,7 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
     siteConfig: {
       http20Enabled: true
       minTlsVersion: '1.2'
-      nodeVersion: '12.13.0'
+      nodeVersion: nodeVersion
       appSettings: [
         {
           name: 'APP_ENV'
