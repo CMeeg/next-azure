@@ -6,6 +6,11 @@ param environment string = 'live'
 
 param buildId string
 
+// This param is currently used to prevent appsettings being updated during "what-if" runs in the build pipeline because it throws an error otherwise
+// Looks like we can remove this once this issue is resolved:
+// https://github.com/Azure/arm-template-whatif/issues/65
+param dryRun bool = false
+
 var resourceNameSuffix = toLower('${projectName}-${environment}')
 
 var webAppName = 'app-${resourceNameSuffix}'
@@ -47,7 +52,7 @@ module cdn 'cdn.bicep' = {
 
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 
-resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
+resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = if(!dryRun) {
   name: '${webAppName}/appsettings'
   properties: {
     APP_ENV: 'production'
