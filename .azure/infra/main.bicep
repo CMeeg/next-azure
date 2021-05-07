@@ -50,19 +50,23 @@ module cdn 'cdn.bicep' = {
   }
 }
 
+var baseUrl = 'https://${webAppServiceHostname}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
+var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
 
 resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = if(!dryRun) {
   name: '${webAppName}/appsettings'
   properties: {
     APP_ENV: 'production'
-    BASE_URL: 'https://${webAppServiceHostname}'
+    BASE_URL: baseUrl
     NEXT_COMPRESS: 'false'
     NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
     NEXT_PUBLIC_BUILD_ID: buildId
-    NEXT_PUBLIC_CDN_URL: 'https://${cdnEndpointHostname}'
+    NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
     WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
   }
 }
 
 output webAppName string = webAppName
+output webAppInsightsInstrumentationKey string = webAppInsightsInstrumentationKey
+output cdnEndpointUrl string = cdnEndpointUrl
