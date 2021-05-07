@@ -4,6 +4,8 @@ param projectName string = 'next-azure'
 
 param environment string = 'live'
 
+param buildId string
+
 var resourceNameSuffix = toLower('${projectName}-${environment}')
 
 var webAppName = 'app-${resourceNameSuffix}'
@@ -50,7 +52,9 @@ resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = {
   properties: {
     APP_ENV: 'production'
     BASE_URL: 'https://${webAppServiceHostname}'
+    NEXT_COMPRESS: 'false'
     NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
+    NEXT_PUBLIC_BUILD_ID: buildId
     NEXT_PUBLIC_CDN_URL: 'https://${cdnEndpointHostname}'
     WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
   }
