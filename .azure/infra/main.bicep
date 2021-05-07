@@ -2,9 +2,28 @@ param location string = resourceGroup().location
 
 param projectName string = 'next-azure'
 
-param environment string = 'live'
+param environment string
 
 param buildId string
+
+@allowed([
+  'F1'
+  'D1'
+  'B1'
+  'B2'
+  'B3'
+  'S1'
+  'S2'
+  'S3'
+  'P1'
+  'P2'
+  'P3'
+  'P4'
+])
+param webAppSkuName string = 'F1'
+
+@minValue(1)
+param webAppSkuCapacity int = 1
 
 // This param is currently used to prevent appsettings being updated during "what-if" runs in the build pipeline because it throws an error otherwise
 // Looks like we can remove this once this issue is resolved:
@@ -23,6 +42,8 @@ module webApp 'app-service.bicep' = {
     location: location
     appServicePlanName: 'asp-${resourceNameSuffix}'
     appServiceName: webAppName
+    skuName: webAppSkuName
+    skuCapacity: webAppSkuCapacity
     nodeVersion: nodeVersion
   }
 }

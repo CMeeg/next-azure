@@ -14,25 +14,13 @@ The intention is not for this repo to be cloned and used to bootstrap other proj
 
 This guide will focus on:
 
-* [How to get setup in Azure Portal](#azure-portal-setup)
 * [Which files to copy over from this sample project to your app](#app-setup)
+* [How to get setup in Azure Portal](#azure-portal-setup)
 * [How to get setup in Azure Pipelines](#azure-pipelines-setup)
 
 >  This guide isn't supposed to be exhaustive - it's just a sample project after all - and you may want or need to do more (or less) outside of what is written here, but at least for the first time through it's recommended to stick to the script (so to speak) and then adapt as you see fit after you have something successfully up and running.
 >
 > Having said that, you may have your own conventions or best practices etc so feel free to deviate if you want to!
-
-## Azure Portal setup
-
-An assumption is made before we begin that you have an Azure account and subscription in which to create the following resources.
-
-### Resource group
-
-> You may already have a resource group where you want to place the required resources, in which case you can skip this step.
-
-* Add a new resource group in your chosen subscription
-* Give it a suitable name and select your preferred region
-* Add tags if you wish and create the resource group
 
 ## App setup
 
@@ -60,32 +48,63 @@ An assumption is made before we begin that you have an Azure account and subscri
     * There are some constants and functions in here that you may find of use in your project - feel free to change the name and location of the file, or ignore anything you don't want or need
     * If there is one thing to take from here it would be the `getCdnUrl` function, which is used to generate URLs with the Build ID in the path so that they be cached by the CDN and busted by a new build - see the `favicon` in `src/pages/index.jsx` as an example
 
+## Azure Portal setup
+
+An assumption is made before we begin that you have an Azure account and subscription in which to create the following resources.
+
+### Resource group
+
+* Add a new resource group in your chosen subscription that will be used for resources for the `preview` [environment](#environments)
+  * The name doesn't really matter, as long as you are happy with it!
+* Give it a suitable name and select your preferred region
+* Add tags if you wish and create the resource group
+* Repeat to create a separate resource group for resources in the `production` environment
+
+> This is assuming you wish to have a separate resource group per environment - it's perfectly possible to have a single resource group too if that's what you prefer - you will just need to use the single resource group when creating your [service connections](#service-connection) and [variable groups](#variable-groups) for your pipeline.
+
 ## Azure pipelines setup
 
 An assumption is made before we begin that you have an Azure DevOps account and project in which to create the pipeline.
 
 ### Service connection
 
-* Under Projects settings > Pipelines > Service connections, create a new service connection
+* Under Projects settings > Pipelines > Service connections, create a new service connection for the `preview` environment
+  * The name doesn't really matter, as long as you are happy with it!
 * Select `Azure resource manager` as connection type
 * Select `Service principal (automatic)` as authentication method
 * When prompted, sign in using credentials that have access to the subscription and resources you have setup in the Azure Portal
-* Select your scope level as `Subscription` and select the Subscription and Resource group that contains your resources
+* Select your scope level as `Subscription` and select the Subscription and Resource group that is to be used for `preview` resources
 * Set the service connection name, add a description if you wish, and save
+* Repeat to create a separate service connection for the `production` environment and connect it to the `production` resource group
 
 ### Environments
 
-* Under Pipelines > Environments, create a `production` environment
+* Under Pipelines > Environments, create an environment named `prod`
+  * This name does matter because it needs to match up with the `TargetEnv` variable set in the pipeline yaml file
 * Leave all settings as their defaults and save
+* Repeat the above to also create an environment named `preview`
+  * After creating the `preview` environment, select "Approvals and checks"
+  * Add an "Approvals" check
+  * Add yourself as an Approver
+  * Create the check
+
+> The intention of the approval check on the `preview` environment is to provide some control over if or when a PR gets deployed, but it's not required if you wish to skip that part.
 
 ### Variable groups
 
 * Under Pipelines > Library, create the following variable groups, leaving all settings as their defaults, but adding the variables stated
   * `next-app-env-vars`
-    * `AzureResourceGroup` = {Name of your resource group}
-    * `AzureServiceConnection` = {Name of your service connection}
-  * `next-app-env-vars-production`
-    * `AzureAppServiceSlot` = `production`
+    * `WebAppSkuCapacity` = `1`
+    * `WebAppSkuName` = `F1`
+    * `WebAppSlot` = `production`
+  * `next-app-env-vars-preview`
+    * `AzureResourceGroup` = {Name of your `preview` resource group}
+    * `AzureServiceConnection` = {Name of your `preview` service connection}
+  * `next-app-env-vars-prod`
+    * `AzureResourceGroup` = {Name of your `production` resource group}
+    * `AzureServiceConnection` = {Name of your `production` service connection}
+
+> Feel free to [change](#what-app-service-plan-sku-should-i-choose) the `WebAppSku*` variables. If you wish to change them for one environment and not the other then just add the adjusted variable to the relevant group e.g. if the production app service should be `S1` then add a `WebAppSkuName` variable to the `next-app-env-vars-prod` group - `next-app-env-vars` are effectively "default settings" and are overridden by variables with the same name in more "specific" groups.
 
 ### Pipeline
 
@@ -96,9 +115,14 @@ An assumption is made before we begin that you have an Azure DevOps account and 
 * Select the branch and path to your `.azure/azure-pipelines.yml` file, and continue
 * Run the pipeline and make sure it runs to completion and you can browse to your app, which is now hosted successfully in Azure app services
 
+> You can run the pipeline manually if you just wish to test it and it's not convenient to push to or create a PR to `main` to kick it off automatically. Manual runs will use the `preview` environment settings because that is the default set in the pipeline yaml.
+
 ## Usage
 
-From this point forward any push to your `main` branch will trigger the pipeline and should result in your app being built and deployed to the app service.
+From this point forward any push to your `main` branch or pull request targeting `main` will trigger the pipeline and should result in your app being built and deployed to the relevant app service:
+
+* PR targeting `main` deploys to `preview` resources
+* Push to `main` deploys to `prod` resources
 
 You may want to customise or extend the pipeline, for example, to build and deploy to other environments when commits are pushed to different branches or pull requests are pushed targeting specific branches.
 
@@ -110,7 +134,7 @@ Linux for the app service should be fine too, but I've not tested this myself - 
 
 ### What app service plan SKU should I choose?
 
-This sample project is set to run on a free plan, but feel free to choose whatever you wish. You can adjust the default in `.azure/infra/app-service.bicep` or make some modifications so that you can pass the app service plan SKU in as a parameter in the pipeline.
+This sample project runs fine on a free plan, but feel free to choose whatever you wish.
 
 ### Do I have to add application insights?
 
