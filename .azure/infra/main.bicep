@@ -64,3 +64,5 @@ resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = if(!dryRun) {
     WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
   }
 }
+
+output webAppName string = webAppName
