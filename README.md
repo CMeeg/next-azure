@@ -57,6 +57,7 @@ An assumption is made before we begin that you have an Azure account and subscri
 * Add a new resource group in your chosen subscription that will be used for resources for the `preview` [environment](#environments)
   * The name doesn't really matter, as long as you are happy with it!
 * Give it a suitable name and select your preferred region
+  * Ensure that your preferred region supports all of the required resource types (app service, cdn, Application Insights)
 * Add tags if you wish and create the resource group
 * Repeat to create a separate resource group for resources in the `production` environment
 
