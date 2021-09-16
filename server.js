@@ -51,10 +51,12 @@ const startServer = async (config) => {
 
 const startTime = Date.now()
 
+const developmentEnv = 'development'
+
 const serverConfig = {
   hostname: 'localhost',
   port: process.env.PORT || 3000,
-  env: process.env.APP_ENV || process.env.NODE_ENV || 'production',
+  env: process.env.APP_ENV || process.env.NODE_ENV || developmentEnv,
   useAppInsights: initAppInsights(
     process.env.NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY
   )
