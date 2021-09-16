@@ -40,6 +40,69 @@ resource profile 'Microsoft.Cdn/profiles@2020-09-01' = {
           }
         }
       ]
+      deliveryPolicy: {
+        rules: [
+          {
+            name: 'CORSOrigin'
+            order: 1
+            conditions: [
+              {
+                name: 'RequestHeader'
+                parameters: {
+                    operator: 'Equal'
+                    selector: 'Origin'
+                    negateCondition: false
+                    matchValues: [
+                      'https://${originHostname}'
+                    ]
+                    transforms: []
+                    '@odata.type': '#Microsoft.Azure.Cdn.Models.DeliveryRuleRequestHeaderConditionParameters'
+                }
+              }
+            ]
+            actions: [
+              {
+                name: 'ModifyResponseHeader'
+                parameters: {
+                    headerAction: 'Overwrite'
+                    headerName: 'Access-Control-Allow-Origin'
+                    value: 'https://${originHostname}'
+                    '@odata.type': '#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters'
+                }
+              }
+            ]
+          }
+          {
+            name: 'CORSNext'
+            order: 2
+            conditions: [
+              {
+                name: 'UrlPath'
+                parameters: {
+                    operator: 'BeginsWith'
+                    negateCondition: false
+                    matchValues: [
+                      '_next/'
+                    ]
+                    transforms: []
+                    '@odata.type': '#Microsoft.Azure.Cdn.Models.DeliveryRuleUrlPathMatchConditionParameters'
+                }
+              }
+            ]
+            actions: [
+              {
+                name: 'ModifyResponseHeader'
+                parameters: {
+                    headerAction: 'Overwrite'
+                    headerName: 'Access-Control-Allow-Origin'
+                    value: 'https://${originHostname}'
+                    '@odata.type': '#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters'
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }
