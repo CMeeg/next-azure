@@ -25,6 +25,7 @@ module.exports = {
         ignore: ['~/']
       }
     ],
+    'import/prefer-default-export': 'off',
     'react/prop-types': 'off',
     'react/react-in-jsx-scope': 'off'
   }

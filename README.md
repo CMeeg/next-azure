@@ -30,7 +30,6 @@ This guide will focus on:
     * Place these wherever you place React components in your project
   * `server.js`
 * Add the following `npm` dependencies
-  * `@microsoft/applicationinsights-react-js`
   * `@microsoft/applicationinsights-web`
   * `applicationinsights`
 * Amend the following files (use the files in this repo as an example)
@@ -146,6 +145,24 @@ The default app settings are:
 * `NEXT_PUBLIC_CDN_URL`
 * `NODE_ENV`
 * `WEBSITE_NODE_DEFAULT_VERSION`
+
+### App Insights
+
+The Application Insights implementation included in this sample app uses the [Node SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/nodejs) for tracking initial requests to the server as well as the [JavaScript SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/javascript) for tracking client requests including "page views" when navigating via routing.
+
+If you want to review and change the configuration you can:
+
+* Find the server config in `./server.js`
+* Find the client config in `./src/components/AppInsights/Sdk.jsx`
+
+If you want to use the Application Insights to track custom metrics you can import and use the provided hook, which will give you access to the Application Insights instance. You should only use this instance inside `useEffect` though as it's client-side only:
+
+```javascript
+import { useAppInsights } from '~/components/AppInsights'
+
+// This gives you access to the app insights instance
+const appInsights = useAppInsights()
+```
 
 ## FAQ
 

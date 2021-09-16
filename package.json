@@ -11,12 +11,12 @@
     "lint": "eslint --ext .jsx,.js ."
   },
   "dependencies": {
-    "@microsoft/applicationinsights-react-js": "^3.0.5",
-    "@microsoft/applicationinsights-web": "^2.5.11",
-    "applicationinsights": "^1.8.10",
+    "@microsoft/applicationinsights-web": "^2.7.0",
+    "applicationinsights": "^2.1.6",
     "next": "^11.1.2",
     "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "react-dom": "^17.0.2",
+    "tslib": "^2.3.1"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0",
