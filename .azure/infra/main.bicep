@@ -25,6 +25,8 @@ param webAppSkuName string = 'F1'
 @minValue(1)
 param webAppSkuCapacity int = 1
 
+param webAppSettings object = {}
+
 // This param is currently used to prevent appsettings being updated during "what-if" runs in the build pipeline because it throws an error otherwise
 // Looks like we can remove this once this issue is resolved:
 // https://github.com/Azure/arm-template-whatif/issues/65
@@ -32,7 +34,7 @@ param dryRun bool = false
 
 var resourceNameSuffix = toLower('${projectName}-${environment}')
 
-var webAppName = 'app-${resourceNameSuffix}'
+var webAppName = '${resourceNameSuffix}-app'
 
 var nodeVersion = '12.13.0'
 
@@ -40,7 +42,7 @@ module webApp 'app-service.bicep' = {
   name: 'web-app'
   params: {
     location: location
-    appServicePlanName: 'asp-${resourceNameSuffix}'
+    appServicePlanName: '${resourceNameSuffix}-asp'
     appServiceName: webAppName
     skuName: webAppSkuName
     skuCapacity: webAppSkuCapacity
@@ -55,7 +57,7 @@ module webAppInsights 'app-insights.bicep' = {
   name: 'web-app-insights'
   params: {
     location: location
-    resourceName: 'ai-${resourceNameSuffix}'
+    resourceName: '${resourceNameSuffix}-ai'
     appServiceId: webAppServiceId
   }
 }
@@ -66,7 +68,7 @@ module cdn 'cdn.bicep' = {
   name: 'cdn'
   params: {
     location: location
-    resourceName: 'cdn-${resourceNameSuffix}'
+    resourceName: '${resourceNameSuffix}-cdn'
     originHostname: webAppServiceHostname
   }
 }
@@ -75,19 +77,30 @@ var baseUrl = 'https://${webAppServiceHostname}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
 
-resource webAppSettings 'Microsoft.Web/sites/config@2020-12-01' = if(!dryRun) {
-  name: '${webAppName}/appsettings'
-  properties: {
-    APP_ENV: 'production'
-    BASE_URL: baseUrl
-    NEXT_COMPRESS: 'false'
-    NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
-    NEXT_PUBLIC_BUILD_ID: buildId
-    NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
-    WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
+// App service settings depend on outputs from other resources so we do this last
+var webAppDeploymentSettings = {
+  APP_ENV: environment
+  BASE_URL: baseUrl
+  NEXT_COMPRESS: 'false'
+  NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
+  NEXT_PUBLIC_BUILD_ID: buildId
+  NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
+  NODE_ENV: 'production'
+  WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
+}
+
+var webAppConfigSettings = union(webAppSettings, webAppDeploymentSettings)
+
+module webAppConfig 'app-service-config.bicep' = if (!dryRun) {
+  name: 'web-app-config'
+  params: {
+    appServiceName: webAppName
+    appSettings: webAppConfigSettings
   }
 }
 
+output webAppEnvironment string = environment
 output webAppName string = webAppName
+output webAppBaseUrl string = baseUrl
 output webAppInsightsInstrumentationKey string = webAppInsightsInstrumentationKey
 output cdnEndpointUrl string = cdnEndpointUrl

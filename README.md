@@ -84,12 +84,6 @@ An assumption is made before we begin that you have an Azure DevOps account and 
   * This name does matter because it needs to match up with the `TargetEnv` variable set in the pipeline yaml file
 * Leave all settings as their defaults and save
 * Repeat the above to also create an environment named `preview`
-  * After creating the `preview` environment, select "Approvals and checks"
-  * Add an "Approvals" check
-  * Add yourself as an Approver
-  * Create the check
-
-> The intention of the approval check on the `preview` environment is to provide some control over if or when a PR gets deployed, but it's not required if you wish to skip that part.
 
 ### Variable groups
 
@@ -127,6 +121,32 @@ From this point forward any push to your `main` branch or pull request targeting
 
 You may want to customise or extend the pipeline, for example, to build and deploy to other environments when commits are pushed to different branches or pull requests are pushed targeting specific branches.
 
+### Deploying additional app settings
+
+The pipeline can be modified to pass additional app settings through to the app service if required. To do so you pass a `webAppSettings` parameter through to the `az deployment` command in the `Run ARM template` task.
+
+For example, to pass the app setting `FOO`, modify the `inlineScript` of the `Run ARM template` task like this:
+
+```bash
+az account show
+# webAppSettings is a JSON string (the example shows the value coming from a variable, but it could be hard-coded)
+webAppSettings='{"FOO": "$(FOO)"}'
+# webAppSettings is then passed as an additional parameter to the az deployment command
+az deployment group create -f "$(Build.ArtifactStagingDirectory)/main.json" -g $(AzureResourceGroup) --parameters environment=$(TargetEnv) buildId=$(NEXT_PUBLIC_BUILD_ID) webAppSkuName=$(WebAppSkuName) webAppSkuCapacity=$(WebAppSkuCapacity) webAppSettings="$webAppSettings"
+```
+These app settings will be merged with the default app settings that are required for the Next app to run in Azure. App settings passed in like in the above example will overwrite default settings with the same name. Be careful that you do not override one of the default app settings unless you really mean to do so!
+
+The default app settings are:
+
+* `APP_ENV`
+* `BASE_URL`
+* `NEXT_COMPRESS`
+* `NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY`
+* `NEXT_PUBLIC_BUILD_ID`
+* `NEXT_PUBLIC_CDN_URL`
+* `NODE_ENV`
+* `WEBSITE_NODE_DEFAULT_VERSION`
+
 ## FAQ
 
 ### Why a Windows app service and not Linux?
@@ -137,13 +157,13 @@ Linux for the app service should be fine too, but I've not tested this myself - 
 
 This sample project runs fine on a free plan, but feel free to choose whatever you wish.
 
-### Do I have to add application insights?
+### Do I have to add Application Insights?
 
-In short, no, but it is assumed in the sample app that you will be using application insights.
+In short, no, but it is assumed in the sample app that you will be using Application Insights.
 
-If you don't want to use application insights you will need to make some adjustments to the sample app code as you copy it across and not follow some of related steps - it should hopefully be easy enough to pull it out if you don't want it in there.
+If you don't want to use Application Insights you will need to make some adjustments to the sample app code as you copy it across and not follow some of related steps - it should hopefully be easy enough to pull it out if you don't want it in there.
 
-You will also need to modify the bicep files in `.azure/infra` so that the app insights resource does not get created or referenced.
+You will also need to modify the bicep files in `.azure/infra` so that the Application Insights resource does not get created or referenced.
 
 ### Do I need a CDN?
 
