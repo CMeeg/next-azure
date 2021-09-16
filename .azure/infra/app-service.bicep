@@ -10,6 +10,8 @@ param skuCapacity int
 
 param nodeVersion string
 
+var minTlsVersion = '1.2'
+
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
   name: appServicePlanName
   location: location
@@ -34,39 +36,11 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
     httpsOnly: true
     siteConfig: {
       http20Enabled: true
-      minTlsVersion: '1.2'
+      minTlsVersion: minTlsVersion
       nodeVersion: nodeVersion
-      appSettings: [
-        {
-          name: 'APP_ENV'
-          value: 'production'
-        }
-        {
-          name: 'BASE_URL'
-          value: '' // Not known yet - will be set later
-        }
-        {
-          name: 'NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: '' // Not known yet - will be set later
-        }
-        {
-          name: 'NEXT_PUBLIC_CDN_URL'
-          value: '' // Not known yet - will be set later
-        }
-      ]
-    }
-  }
-
-  // This is purely here to define which app settings are deployment slot settings
-  resource webAppSlotSettings 'config' = {
-    name: 'slotConfigNames'
-    properties: {
-      appSettingNames: [
-        'APP_ENV'
-        'BASE_URL'
-        'NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY'
-        'NEXT_PUBLIC_CDN_URL'
-      ]
+      // If your app service plan allows it then it's recommended to uncomment these settings
+      // use32BitWorkerProcess: false
+      // alwaysOn: true
     }
   }
 }
