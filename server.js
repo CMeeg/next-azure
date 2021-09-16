@@ -64,6 +64,7 @@ const serverConfig = {
 
 startServer(serverConfig)
   .then(async (app) => {
+    // eslint-disable-next-line no-console
     console.log(
       `started server on host ${serverConfig.hostname}, port ${serverConfig.port}, env ${serverConfig.env}`
     )
@@ -80,6 +81,7 @@ startServer(serverConfig)
     await app.prepare()
   })
   .catch((err) => {
+    // eslint-disable-next-line no-console
     console.error(err)
 
     process.exit(1)

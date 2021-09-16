@@ -68,6 +68,7 @@ const AppInsightsContextProvider = ({ children }) => {
 
     router.events.on('routeChangeComplete', handleRouteChange)
 
+    // eslint-disable-next-line consistent-return
     return () => {
       router.events.off('routeChangeComplete', handleRouteChange)
     }
