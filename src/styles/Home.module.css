@@ -111,7 +111,10 @@
 }
 
 .logo {
+  display: inline-block;
+  width: 80px;
   height: 1em;
+  margin-left: 0.5em;
 }
 
 @media (max-width: 600px) {

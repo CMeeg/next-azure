@@ -1,5 +1,5 @@
 {
-  "extends": ["wesbos"],
+  "extends": ["wesbos", "plugin:@next/next/recommended"],
   "rules": {
     "import/no-unresolved": [
       "error",

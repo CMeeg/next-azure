@@ -15,11 +15,13 @@
     "@microsoft/applicationinsights-react-js": "^3.0.5",
     "@microsoft/applicationinsights-web": "^2.5.11",
     "applicationinsights": "^1.8.10",
-    "next": "10.0.7",
-    "react": "17.0.1",
-    "react-dom": "17.0.1"
+    "next": "^11.1.2",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@next/eslint-plugin-next": "^11.1.2",
     "babel-eslint": "10.1.0",
     "eslint": "7.8.1",
     "eslint-config-airbnb": "18.2.0",

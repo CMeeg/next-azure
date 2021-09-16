@@ -1,5 +1,7 @@
 import Head from 'next/head'
+import Image from 'next/image'
 import { getCdnUrl } from '~/lib/utils'
+import vercelLogo from '~/public/vercel.svg'
 import styles from '~/styles/Home.module.css'
 
 export default function Home() {
@@ -58,11 +60,9 @@ export default function Home() {
           rel="noopener noreferrer"
         >
           Powered by{' '}
-          <img
-            src={getCdnUrl('/vercel.svg')}
-            alt="Vercel Logo"
-            className={styles.logo}
-          />
+          <span className={styles.logo}>
+            <Image src={vercelLogo} alt="Vercel Logo" layout="responsive" />
+          </span>
         </a>
       </footer>
     </div>
