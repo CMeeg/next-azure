@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import Image from 'next/image'
-import { getCdnUrl } from '~/lib/utils'
+import { getCdnUrl } from '~/lib/env'
 import vercelLogo from '~/public/vercel.svg'
 import styles from '~/styles/Home.module.css'
 

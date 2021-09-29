@@ -43,7 +43,7 @@ This guide will focus on:
     * Import the `AppInsightsContextProvider` component and wrap it around the `<Component />` element
   * `.env.template`
     * If you maintain an env template settings file you may want to copy the contents of this file over
-  * `src/lib/utils.js`
+  * `src/lib/env.js`
     * There are some constants and functions in here that you may find of use in your project - feel free to change the name and location of the file, or ignore anything you don't want or need
     * If there is one thing to take from here it would be the `getCdnUrl` function, which is used to generate URLs with the Build ID in the path so that they be cached by the CDN and busted by a new build - see the `favicon` in `src/pages/index.jsx` as an example
 
