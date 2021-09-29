@@ -1,7 +1,7 @@
 import { createContext, useState } from 'react'
 import dynamic from 'next/dynamic'
 
-const AppInsightsContext = createContext()
+const AppInsightsContext = createContext(null)
 
 const AppInsightsSdk = dynamic(() => import('./Sdk'), {
   ssr: false
