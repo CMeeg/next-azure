@@ -34,6 +34,8 @@ param webAppSkuCapacity int
 
 param webAppSlotName string
 
+param webAppNodeVersion object
+
 param webAppSettings object
 
 // This param is currently used to prevent appsettings being updated during "what-if" runs in the build pipeline because it throws an error otherwise
@@ -47,8 +49,6 @@ var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ?
 
 var webAppName = '${sharedResourceNamePrefix}-app'
 
-var nodeVersion = '12.13.0'
-
 module webApp 'app-service.bicep' = {
   name: 'web-app'
   scope: resourceGroup(sharedResourceGroupName)
@@ -58,7 +58,7 @@ module webApp 'app-service.bicep' = {
     appServiceName: webAppName
     skuName: webAppSkuName
     skuCapacity: webAppSkuCapacity
-    nodeVersion: nodeVersion
+    nodeVersion: webAppNodeVersion.node
     slotName: webAppSlotName
   }
 }
@@ -99,7 +99,8 @@ var webAppDeploymentSettings = {
   NEXT_PUBLIC_BUILD_ID: buildId
   NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
   NODE_ENV: 'production'
-  WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
+  WEBSITE_NODE_DEFAULT_VERSION: webAppNodeVersion.node
+  WEBSITE_NPM_DEFAULT_VERSION: webAppNodeVersion.npm
 }
 
 var webAppConfigSettings = union(webAppSettings, webAppDeploymentSettings)
