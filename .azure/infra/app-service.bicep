@@ -14,6 +14,8 @@ param slotName string
 
 var isSlotDeploy = slotName != 'production'
 
+var isDevTestSku = startsWith(skuName, 'F') || startsWith(skuName, 'D') || startsWith(skuName, 'B')
+
 var minTlsVersion = '1.2'
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
@@ -42,10 +44,8 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
       http20Enabled: true
       minTlsVersion: minTlsVersion
       nodeVersion: nodeVersion
-      use32BitWorkerProcess: false
-      alwaysOn: true
-      localMySqlEnabled: false
-      netFrameworkVersion: 'v4.6'
+      use32BitWorkerProcess: isDevTestSku
+      alwaysOn: !isDevTestSku
     }
   }
 
@@ -58,10 +58,8 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
         http20Enabled: true
         minTlsVersion: minTlsVersion
         nodeVersion: nodeVersion
-        use32BitWorkerProcess: false
-        alwaysOn: true
-        localMySqlEnabled: false
-        netFrameworkVersion: 'v4.6'
+        use32BitWorkerProcess: isDevTestSku
+        alwaysOn: !isDevTestSku
       }
     }
   }

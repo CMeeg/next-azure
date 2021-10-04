@@ -9,13 +9,23 @@ param sharedResourceGroupName string
 param buildId string
 
 @allowed([
+  'F1'
+  'D1'
+  'B1'
+  'B2'
+  'B3'
   'S1'
   'S2'
   'S3'
   'P1'
   'P2'
   'P3'
-  'P4'
+  'P1V2'
+  'P2V2'
+  'P3V2'
+  'P1V3'
+  'P2V3'
+  'P3V3'
 ])
 param webAppSkuName string
 
@@ -31,8 +41,9 @@ param webAppSettings object
 // https://github.com/Azure/arm-template-whatif/issues/65
 param dryRun bool = false
 
+var envResourceGroupName = resourceGroup().name
 var envResourceNamePrefix = toLower('${projectName}-${environment}')
-var sharedResourceNamePrefix = toLower('${projectName}')
+var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${projectName}')
 
 var webAppName = '${sharedResourceNamePrefix}-app'
 
