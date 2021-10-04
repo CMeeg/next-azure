@@ -118,5 +118,6 @@ module webAppConfig 'app-service-config.bicep' = if (!dryRun) {
 output webAppEnvironment string = environment
 output webAppName string = webAppName
 output webAppBaseUrl string = baseUrl
+output webAppSettings object = webAppConfigSettings
 output webAppInsightsInstrumentationKey string = webAppInsightsInstrumentationKey
 output cdnEndpointUrl string = cdnEndpointUrl
