@@ -24,9 +24,7 @@ resource webAppSlotSettings 'Microsoft.Web/sites/config@2020-12-01' = if(isSlotD
     appSettingNames: [
       'APP_ENV'
       'BASE_URL'
-      'NEXT_COMPRESS'
       'NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY'
-      'NEXT_PUBLIC_BUILD_ID'
       'NEXT_PUBLIC_CDN_URL'
     ]
   }
