@@ -109,6 +109,8 @@ var webAppDeploymentSettings = {
   NEXT_PUBLIC_BUILD_ID: buildId
   NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
   NODE_ENV: 'production'
+  // See https://github.com/projectkudu/kudu/wiki/Configurable-settings#changing-the-timeout-before-external-commands-are-killed
+  SCM_COMMAND_IDLE_TIMEOUT: 180
   WEBSITE_NODE_DEFAULT_VERSION: webAppNodeVersion.node
   WEBSITE_NPM_DEFAULT_VERSION: webAppNodeVersion.npm
 }
