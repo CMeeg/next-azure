@@ -43,9 +43,13 @@ param webAppSettings object
 // https://github.com/Azure/arm-template-whatif/issues/65
 param dryRun bool = false
 
+// Create resource name prefixes for "shared" and "environment" resources
+
 var envResourceGroupName = resourceGroup().name
 var envResourceNamePrefix = toLower('${projectName}-${environment}')
 var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${projectName}')
+
+// Define the app service resources
 
 var webAppName = '${sharedResourceNamePrefix}-app'
 
@@ -66,6 +70,8 @@ module webApp 'app-service.bicep' = {
 var webAppServiceId = webApp.outputs.appServiceId
 var webAppServiceHostname = webApp.outputs.appServiceHostname
 
+// Define the application insights resource
+
 module webAppInsights 'app-insights.bicep' = {
   name: 'web-app-insights'
   params: {
@@ -77,6 +83,8 @@ module webAppInsights 'app-insights.bicep' = {
 
 var webAppInsightsInstrumentationKey = webAppInsights.outputs.instrumentationKey
 
+// Define the CDN resources
+
 module cdn 'cdn.bicep' = {
   name: 'cdn'
   params: {
@@ -86,11 +94,13 @@ module cdn 'cdn.bicep' = {
   }
 }
 
+// Define the app service settings - these depend on outputs from other resources so cannot be defined earlier as part of the app service definition
+
 var baseUrl = 'https://${webAppServiceHostname}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
 
-// App service settings depend on outputs from other resources so we do this last
+// These are the base settings required for the deployment
 var webAppDeploymentSettings = {
   APP_ENV: environment
   BASE_URL: baseUrl
@@ -103,6 +113,7 @@ var webAppDeploymentSettings = {
   WEBSITE_NPM_DEFAULT_VERSION: webAppNodeVersion.npm
 }
 
+// Merge the default settings into any additional settings provided via the `webAppSettings` parameter
 var webAppConfigSettings = union(webAppSettings, webAppDeploymentSettings)
 
 module webAppConfig 'app-service-config.bicep' = if (!dryRun) {
@@ -114,6 +125,8 @@ module webAppConfig 'app-service-config.bicep' = if (!dryRun) {
     appSettings: webAppConfigSettings
   }
 }
+
+// Set deployment outputs
 
 output webAppEnvironment string = environment
 output webAppName string = webAppName

@@ -4,6 +4,7 @@ param slotName string
 
 param appSettings object
 
+// "production" is the name of the "default" slot - essentially it means "no slot"
 var isSlotDeploy = slotName != 'production'
 
 resource webAppConfig 'Microsoft.Web/sites/config@2020-12-01' = if(!isSlotDeploy) {

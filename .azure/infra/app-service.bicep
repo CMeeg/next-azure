@@ -12,11 +12,15 @@ param nodeVersion string
 
 param slotName string
 
+// "production" is the name of the "default" slot - essentially it means "no slot"
 var isSlotDeploy = slotName != 'production'
 
-var isDevTestSku = startsWith(skuName, 'F') || startsWith(skuName, 'D') || startsWith(skuName, 'B')
+// "F" and "D" SKUs use shard infrastructure and have more limited features
+var isSharedComputeSku = startsWith(skuName, 'F') || startsWith(skuName, 'D')
 
 var minTlsVersion = '1.2'
+
+// Define the app service plan
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
   name: appServicePlanName
@@ -26,6 +30,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
     capacity: skuCapacity
   }
 }
+
+// Define the app service
 
 resource appService 'Microsoft.Web/sites@2020-12-01' = {
   name: appServiceName
@@ -44,8 +50,9 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
       http20Enabled: true
       minTlsVersion: minTlsVersion
       nodeVersion: nodeVersion
-      use32BitWorkerProcess: isDevTestSku
-      alwaysOn: !isDevTestSku
+      // 64 bit and always on not available on anything lower than Basic SKUs
+      use32BitWorkerProcess: isSharedComputeSku
+      alwaysOn: !isSharedComputeSku
     }
   }
 
@@ -58,8 +65,9 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
         http20Enabled: true
         minTlsVersion: minTlsVersion
         nodeVersion: nodeVersion
-        use32BitWorkerProcess: isDevTestSku
-        alwaysOn: !isDevTestSku
+        // 64 bit and always on not available on anything lower than Basic SKUs
+        use32BitWorkerProcess: isSharedComputeSku
+        alwaysOn: !isSharedComputeSku
       }
     }
   }
