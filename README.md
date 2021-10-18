@@ -85,7 +85,7 @@ It is assumed that you have an active Azure DevOps account in which you can crea
   * Set other options as you want
   * Click Create
 
-> Approvals and checks is optional, so feel free to skip that if you want.
+> Approvals and checks is optional, but useful if you want to check the output of the "build" stages before proceeding with the "deploy" stages.
 
 #### Create variable groups
 
@@ -117,6 +117,7 @@ It is assumed that you have an active Azure DevOps account in which you can crea
 ### Run the pipeline
 
 * Create a new pull request from your feature branch targeting your "main" branch to kick off a new pipeline run targeting your preview environment
+  * You may be require to grant permissions to your variable groups the first time the pipeline runs - keep an eye on the progress of the pipline in the Azure DevOps UI
 * Merge the pull request in to your "main" branch to kick off a new pipeline run targeting your production environment
 
 > Manual runs will use the `preview` environment settings because that is the default set in the pipeline yaml.
