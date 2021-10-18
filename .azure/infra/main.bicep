@@ -34,6 +34,10 @@ param webAppSkuCapacity int
 
 param webAppSlotName string
 
+param webAppDomainName string
+
+param webAppCertName string
+
 param webAppNodeVersion object
 
 param webAppSettings object
@@ -49,9 +53,26 @@ var envResourceGroupName = resourceGroup().name
 var envResourceNamePrefix = toLower('${projectName}-${environment}')
 var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${projectName}')
 
+// Define the key vault resource if required
+
+var keyVaultName = '${envResourceNamePrefix}-kv'
+
+// The only reason to use key vault (currently) is if we are using a custom SSL cert
+var useKeyVault = !empty(webAppCertName)
+
+resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = if(useKeyVault) {
+  name: keyVaultName
+}
+
 // Define the app service resources
 
 var webAppName = '${sharedResourceNamePrefix}-app'
+
+var webAppCustomDomain = useKeyVault ? {
+  domainName: webAppDomainName
+  certName: webAppCertName
+  keyVaultId: keyVault.id
+} : {}
 
 module webApp 'app-service.bicep' = {
   name: 'web-app'
@@ -64,6 +85,7 @@ module webApp 'app-service.bicep' = {
     skuCapacity: webAppSkuCapacity
     nodeVersion: webAppNodeVersion.node
     slotName: webAppSlotName
+    customDomain: webAppCustomDomain
   }
 }
 
