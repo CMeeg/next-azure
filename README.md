@@ -1,5 +1,177 @@
 # next-azure
 
+## Getting started
+
+### Create and configure your app
+
+* Init a new Git repo for your app and push the "main" branch to a remote e.g. on GitHub
+* Create a new feature branch where we will do the basic setup for your app e.g. `feature/create-next-app`
+* Run Create Next App using this template
+  * TODO: JavaScript or TypeScript
+* Edit `.azure/main.parameters.json.template`
+  * Change the `value` of the `projectName` parameter
+    * This defaults to `next-azure`, but should be something specific to your project
+    * It is used in Azure resource names so should be named [appropriately](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules) (alphanumeric and hyphens are generally safe, and safe for the resources used by this template)
+* Commit and push changes
+
+### Create resources in Azure portal
+
+There is a choice to make before you continue - do you want to deploy your application to:
+
+1. One app service per environment
+2. One app service with one [deployment slot](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) per environment
+
+Steps that are prefixed with **Slots** are only applicable if you choose option 2. Steps without the prefix are applicable to both options.
+
+> See the [FAQ section](#should-i-use-app-service-deployment-slots) for more info on why you might choose one option over the other.
+
+It is assumed that you have an active Azure Subscription into which you can deploy your resources.
+
+#### Create resource groups
+
+* Create resource group for "preview" environment resources e.g. `next-azure-preview-rg`
+* Create resource group for "production" environment resources e.g. `next-azure-prod-rg`
+* **Slots** Create resource group for "shared" resources e.g. `next-azure-rg`
+  * "shared" here meaning that the resources in this group are shared between more than one environment e.g. the app service is in this group because it has a slot per environment
+
+> The name of the resource groups don't really "matter" in that they can be whatever you want them to be, but the convention used in the Bicep files that will be used to create the resources required by the app is generally `{projectName}-{envName}-{resourceSuffix}` so that's what is used in the examples. You can change these conventions if you like though - see the [FAQ](#how-can-i-change-the-resource-naming-conventions).
+
+### Create Azure DevOps pipeline
+
+It is assumed that you have an active Azure DevOps account in which you can create your pipeline.
+
+#### Create service connections
+
+* Create or enter the Azure DevOps project where you will create your pipeline
+* Go to Projects settings > Pipelines > Service connections
+* Create a new service connection for the `preview` environment
+  * Select `Azure resource manager` as connection type
+  * Select `Service principal (automatic)` as authentication method
+  * When prompted, sign in using credentials that have access to the subscription and resources groups you have setup in the Azure Portal
+  * Select your scope level as `Subscription` and select the Subscription and Resource group that is to be used for `preview` resources e.g. `next-app-preview-rg`
+  * Set the service connection name e.g. `next-azure-app-preview`
+  * Add a description if you wish
+  * Choose to "Grant access to all pipelines"
+  * Save
+* Repeat all of the above steps to create a separate service connection for the `production` environment
+* **Slots** Give the Service Principal(s) permissions to contribute to resources in the "shared" resource group
+  * Choose to edit any of your new Service Connections
+  * From the Overview tab, click on `Manage Service Principal`
+  * Copy the `Display name` of the service principal
+  * Navigate to your "shared" resource group in the Azure Portal
+  * Click on Access Control (IAM) > Role Assignments
+  * Click Add > Add role assignment
+    * Choose the Contributor role, click Next
+    * Choose Assign access to User, group, or service principal, click Select members
+    * Paste the `Display name` of the service principal you copied earlier
+    * Select all of the matches
+    * Add a description if you wish
+    * Review + assign your changes
+
+> The choice to "Grant access to all pipelines" when creating the Service Principal(s) is done for convenience in these getting started instructions, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
+
+#### Create environments
+
+* Go to Pipelines > Environments, and create a New environment
+  * Name it `preview`
+  * Give it a description if you want to
+  * Leave all other settings as their defaults, and click Create
+* Repeat the above to create another environment named `production`
+* Edit the `production` environment
+* Click More actions > Approvals and checks
+* Click Add
+  * Select Approvals, click Next
+  * Add Approvers e.g. yourself
+  * Set other options as you want
+  * Click Create
+
+> Approvals and checks is optional, so feel free to skip that if you want.
+
+#### Create variable groups
+
+* Go to Pipelines > Library, and create the following variable groups:
+  * `next-app-env-vars`
+    * `WebAppSkuName` = {The name of the SKU you want your app service to use - `F1` (Free) is the minimum unless you are using **Slots** in which case `B1` is the minimum Dev/Test SKU, and `S1` is the minimum production SKU}
+    * `WebAppSkuCapacity` = {The number of app service instances you wish to scale out to by default e.g. `1`}
+    * **Slots** `AzureSharedResourceGroup` = {Name of your "shared" resource group}
+  * `next-app-env-vars-preview`
+    * `AzureResourceGroup` = {Name of your "preview" resource group}
+    * `AzureServiceConnection` = {Name of your "preview" service connection}
+    * **Slots** `WebAppSlotName` = `preview`
+  * `next-app-env-vars-production`
+    * `AzureResourceGroup` = {Name of your "production" resource group}
+    * `AzureServiceConnection` = {Name of your "production" service connection}
+    * **Slots** `WebAppSlotName` = `production`
+
+> You may want to change the name of these variable groups, in which case you will also need to update the names in `.azure/azure-pipelines.yml` where they are referenced. Don't forget to commit and push any changes that you make before creating and running the pipeline.
+
+#### Create the pipeline
+
+* Go to Pipelines > Pipelines, and create a pipeline
+* Choose the relevant option for where your repo is located (e.g. GitHub), and authorise as requested
+* Once authorised, select your repository and authorise as requested here also
+* Select `Existing Azure Pipelines YAML file` to configure your pipeline
+* Select the branch (this will be the feature branch you created earlier) and path to your `.azure/azure-pipelines.yml` file, and continue
+* Save the pipeline (you will need to use the dropdown next to the "Run" button)
+
+### Run the pipeline
+
+* Create a new pull request from your feature branch targeting your "main" branch to kick off a new pipeline run targeting your preview environment
+* Merge the pull request in to your "main" branch to kick off a new pipeline run targeting your production environment
+
+> Manual runs will use the `preview` environment settings because that is the default set in the pipeline yaml.
+
+✔️ That's the basics done! Please read through the rest of this document for some more ideas and instructions of how to use this pipeline.
+
+## Usage
+
+### Add support for additional target environments
+
+TODO
+
+### Add custom domain name and SSL
+
+TODO: Mention there will be a problem with CDN endpoint origin - will need to delete and recreate resource
+
+### Variable group settings
+
+TODO: List variables that can be used, what they do, if they're required, if slot-specific etc
+
+* AzureResourceGroup
+* AzureServiceConnection
+* AzureSharedResourceGroup
+* WebAppSkuName
+* WebAppSkuCapacity
+* WebAppSlotName
+* WebAppDomainName
+* WebAppCertName
+
+## FAQ
+
+### Should I use app service deployment slots?
+
+During the "Getting started" section of this documentation you were asked to make a choice - do you want to deploy your application to:
+
+1. One app service per environment
+2. One app service with one deployment slot per environment
+
+If this is / will be a "dev/test" app or you want to keep costs low then option 1 should be fine, but bear in mind that the "F" (free) and "D" (cheap, relatively) app service SKUs are quite limited in their capabilities.
+
+If this is / will be a "production" app then option 2 will be more cost effective in the long run as you pay for the app service plan and the slots "come for free" - currently 5 slots on an S1 plan.
+
+However, you can choose to go with option 1 to begin with until you a) outgrow it; or b) are ready to go into production, and then switch to option 2 at that point.
+
+### How can I change the resource naming conventions?
+
+TODO
+
+### Can I use GitHub Actions instead of Azure DevOps pipelines?
+
+TODO
+
+
+
+
 This is a sample [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) that exists to demonstrate:
 
 * A Next.js app hosted and running in Azure app services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration)
@@ -172,7 +344,14 @@ Linux for the app service should be fine too, but I've not tested this myself - 
 
 ### What app service plan SKU should I choose?
 
-This sample project runs fine on a free plan, but feel free to choose whatever you wish.
+This sample project runs fine on a Free SKU, but you may quickly become limited by it if you are planning to develop any non-trivial application. The minimum SKU that your app can run under ultimately depends on your requirements. For example:
+
+* you should not run a production application on anything below an `S1` tier
+* if you require a custom domain and SSL then you will need to to select at least a Basic tier SKU
+* if your app needs to run under a 64-bit process you will need to select at least a Basic tier SKU
+* if you wish to use deployment slots then you will need to select at least a Standard tier SKU
+
+Feel free to choose whatever plan you is right for you and your project, but it's worth doing a bit of planning and research up front as to what your minimum requirements are and what SKUs are suitable, and how much that will [cost](https://azure.microsoft.com/pricing/calculator/) you.
 
 ### Do I have to add Application Insights?
 
@@ -192,8 +371,8 @@ If you don't want to use a CDN then you can modify the bicep files in `.azure/in
 
 It depends on a few factors (e.g. whether the infrastructure resources already exist or need to be created by the pipeline, the size and complexity of your app, the app service plan SKU that you have chosen), but from running this sample a few times it has taken anywhere between 3 - 15 mins to run to completion.
 
-The first time the pipeline runs or after any changes to `npm` dependencies (anything that causes a change in the `yarn.lock` file) will be the slowest as these runs will not benefit from cached files.
+The first time the pipeline runs or after any changes to `package.json` dependencies (anything that causes a change in the `yarn.lock` file) will be the slowest as these runs will not benefit from a `node_modules` cache task present in the pipeline.
 
-There is a double hit from `yarn install` in that case as it runs during the build step, but it also gets executed on the app service because the node server needs access to production node module dependencies, and deploying them from the pipeline to the app service along with the rest of the application files is *extremely* slow.
+There is also a second hit from `yarn install` in this case as it runs during the build step in the pipeline, but it also gets executed on the app service because the node server needs access to production node module dependencies. The `node_modules` output from the build step is not deployed with the rest of the build output because a) it includes `devDependencies` that we don't need on the server; and b) deploying `node_modules` from the pipeline to the app service along with the rest of the application files via zip deploy has proven to be much slower than running a production-only `yarn install` post-deployment.
 
-As mentioned, caching is in place in the pipeline (based on the contents of the `yarn.lock` file) for subsequent runs, and if no changes have been made to dependencies then running `yarn install` on the app service does not take much time either.
+As mentioned, caching is in place in the pipeline (based on the contents of the `yarn.lock` file) for subsequent runs, and if no changes have been made to dependencies then the time required to run `yarn install` in the pipeline and on the app service is much reduced.
