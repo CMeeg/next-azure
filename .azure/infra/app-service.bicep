@@ -77,9 +77,9 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
     }
   }
 }
-// 'unknown' is used below to satisfy What-If, which seems to hit this resource even if the condition is false
+
 resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' = if(hasCustomDomain) {
-  name: '$${appServicePlanName}-${empty(customDomain.certName) ? 'unknown' : customDomain.certName}'
+  name: '$${appServicePlanName}-${customDomain.certName}'
   location: location
   properties: {
     keyVaultId: customDomain.keyVaultId
@@ -88,9 +88,8 @@ resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' = if(hasC
   }
 }
 
-// 'unknown' is used below to satisfy What-If, which seems to hit this resource even if the condition is false
 resource appServiceHostName 'Microsoft.Web/sites/hostNameBindings@2020-12-01' = if(hasCustomDomain && !isSlotDeploy) {
-  name: '${appService.name}/${empty(customDomain.domainName) ? 'unknown' : customDomain.domainName}'
+  name: '${appService.name}/${customDomain.domainName}'
   properties: {
     sslState: 'SniEnabled'
     thumbprint: appServiceCertificate.properties.thumbprint
@@ -98,7 +97,7 @@ resource appServiceHostName 'Microsoft.Web/sites/hostNameBindings@2020-12-01' = 
 }
 
 resource appServiceSlotHostName 'Microsoft.Web/sites/slots/hostNameBindings@2020-12-01' = if(hasCustomDomain && isSlotDeploy) {
-  name: '${appServiceName}/${slotName}/${empty(customDomain.domainName) ? 'unknown' : customDomain.domainName}'
+  name: '${appServiceName}/${slotName}/${customDomain.domainName}'
   properties: {
     sslState: 'SniEnabled'
     thumbprint: appServiceCertificate.properties.thumbprint
