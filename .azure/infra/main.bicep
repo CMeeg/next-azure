@@ -68,11 +68,11 @@ resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = if(useKeyVau
 
 var webAppName = '${sharedResourceNamePrefix}-app'
 
-var webAppCustomDomain = useKeyVault ? {
+var webAppCustomDomain = {
   domainName: webAppDomainName
   certName: webAppCertName
-  keyVaultId: keyVault.id
-} : {}
+  keyVaultId: useKeyVault ? keyVault.id : null
+}
 
 module webApp 'app-service.bicep' = {
   name: 'web-app'
