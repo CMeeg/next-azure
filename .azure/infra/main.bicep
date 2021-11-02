@@ -72,6 +72,7 @@ var webAppCustomDomain = {
   domainName: webAppDomainName
   certName: webAppCertName
   keyVaultId: useKeyVault ? keyVault.id : null
+  keyVaultName: useKeyVault ? keyVaultName : null
 }
 
 module webApp 'app-service.bicep' = {

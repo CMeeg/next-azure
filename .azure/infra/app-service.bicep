@@ -79,7 +79,7 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
 }
 
 resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' = if(hasCustomDomain) {
-  name: '$${appServicePlanName}-${customDomain.certName}'
+  name: '${customDomain.keyVaultName}-${customDomain.certName}'
   location: location
   properties: {
     keyVaultId: customDomain.keyVaultId
