@@ -60,20 +60,20 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
       alwaysOn: !isSharedComputeSku
     }
   }
+}
 
-  resource slot 'slots' = if(isSlotDeploy) {
-    name: slotName
-    location: location
-    properties: {
-      httpsOnly: true
-      siteConfig: {
-        http20Enabled: true
-        minTlsVersion: minTlsVersion
-        nodeVersion: nodeVersion
-        // 64 bit and always on not available on anything lower than Basic SKUs
-        use32BitWorkerProcess: isSharedComputeSku
-        alwaysOn: !isSharedComputeSku
-      }
+resource appServiceSlot 'Microsoft.Web/sites/slots@2020-12-01' = if(isSlotDeploy) {
+  name: '${appService.name}/${slotName}'
+  location: location
+  properties: {
+    httpsOnly: true
+    siteConfig: {
+      http20Enabled: true
+      minTlsVersion: minTlsVersion
+      nodeVersion: nodeVersion
+      // 64 bit and always on not available on anything lower than Basic SKUs
+      use32BitWorkerProcess: isSharedComputeSku
+      alwaysOn: !isSharedComputeSku
     }
   }
 }
@@ -97,12 +97,12 @@ resource appServiceHostName 'Microsoft.Web/sites/hostNameBindings@2020-12-01' = 
 }
 
 resource appServiceSlotHostName 'Microsoft.Web/sites/slots/hostNameBindings@2020-12-01' = if(hasCustomDomain && isSlotDeploy) {
-  name: '${appServiceName}/${slotName}/${customDomain.domainName}'
+  name: '${appServiceSlot.name}/${customDomain.domainName}'
   properties: {
     sslState: 'SniEnabled'
     thumbprint: appServiceCertificate.properties.thumbprint
   }
 }
 
-output appServiceId string = isSlotDeploy ? appService::slot.id : appService.id
-output appServiceHostname string = hasCustomDomain ? customDomain.domainName : isSlotDeploy ? appService::slot.properties.defaultHostName : appService.properties.defaultHostName
+output appServiceId string = isSlotDeploy ? appServiceSlot.id : appService.id
+output appServiceHostname string = hasCustomDomain ? customDomain.domainName : isSlotDeploy ? appServiceSlot.properties.defaultHostName : appService.properties.defaultHostName
