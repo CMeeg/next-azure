@@ -68,13 +68,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = if(useKeyVau
 
 var webAppName = '${sharedResourceNamePrefix}-app'
 
-var webAppCustomDomain = {
-  domainName: webAppDomainName
-  certName: webAppCertName
-  keyVaultId: useKeyVault ? keyVault.id : null
-  keyVaultName: useKeyVault ? keyVaultName : null
-}
-
 module webApp 'app-service.bicep' = {
   name: 'web-app'
   scope: resourceGroup(sharedResourceGroupName)
@@ -86,12 +79,31 @@ module webApp 'app-service.bicep' = {
     skuCapacity: webAppSkuCapacity
     nodeVersion: webAppNodeVersion.node
     slotName: webAppSlotName
-    customDomain: webAppCustomDomain
   }
 }
 
+var webAppServicePlanId = webApp.outputs.appServicePlanId
 var webAppServiceId = webApp.outputs.appServiceId
 var webAppServiceHostname = webApp.outputs.appServiceHostname
+
+// Define the app service domain
+
+module webAppDomain 'app-service-domain.bicep' = if(!empty(webAppDomainName)) {
+  name: 'web-app-domain'
+  scope: resourceGroup(sharedResourceGroupName)
+  params: {
+    location: location
+    appServicePlanId: webAppServicePlanId
+    appServiceName: webAppName
+    slotName: webAppSlotName
+    domainName: webAppDomainName
+    certName: webAppCertName
+    keyVaultId: useKeyVault ? keyVault.id : ''
+    keyVaultName: useKeyVault ? keyVaultName : ''
+  }
+}
+
+var webAppServicePrimaryDomain = empty(webAppDomainName) ? webAppServiceHostname : webAppDomainName
 
 // Define the application insights resource
 
@@ -113,13 +125,13 @@ module cdn 'cdn.bicep' = {
   params: {
     location: location
     resourceName: '${envResourceNamePrefix}-cdn'
-    originHostname: webAppServiceHostname
+    originHostname: webAppServicePrimaryDomain
   }
 }
 
 // Define the app service settings - these depend on outputs from other resources so cannot be defined earlier as part of the app service definition
 
-var baseUrl = 'https://${webAppServiceHostname}'
+var baseUrl = 'https://${webAppServicePrimaryDomain}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
 
@@ -141,7 +153,7 @@ var webAppDeploymentSettings = {
 // Merge the default settings into any additional settings provided via the `webAppSettings` parameter
 var webAppConfigSettings = union(webAppSettings, webAppDeploymentSettings)
 
-module webAppConfig 'app-service-config.bicep' = if (!dryRun) {
+module webAppConfig 'app-service-config.bicep' = if(!dryRun) {
   name: 'web-app-config'
   scope: resourceGroup(sharedResourceGroupName)
   params: {
