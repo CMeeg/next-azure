@@ -1,25 +1,22 @@
 # dependencies
-/node_modules
+node_modules/
+
+# yarn
+yarn-debug.log*
+yarn-error.log*
 
 # next.js
-/.next/
-/out/
-
-# production
-/build
-/dist
-
-# misc
-.DS_Store
-Thumbs.db
-
-# debug
-*.log
+.next/
 
 # local env files
 .env
 .env.*
 !.env.template
 
-# vercel
-.vercel
+# build
+.azure/infra/*.parameters.json
+dist/
+
+# misc
+.DS_Store
+Thumbs.db

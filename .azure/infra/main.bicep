@@ -1,8 +1,10 @@
 param location string = resourceGroup().location
 
-param projectName string = 'next-azure'
+param projectName string
 
 param environment string
+
+param sharedResourceGroupName string
 
 param buildId string
 
@@ -18,66 +20,122 @@ param buildId string
   'P1'
   'P2'
   'P3'
-  'P4'
+  'P1V2'
+  'P2V2'
+  'P3V2'
+  'P1V3'
+  'P2V3'
+  'P3V3'
 ])
-param webAppSkuName string = 'F1'
+param webAppSkuName string
 
 @minValue(1)
-param webAppSkuCapacity int = 1
+param webAppSkuCapacity int
 
-param webAppSettings object = {}
+param webAppSlotName string
+
+param webAppDomainName string
+
+param webAppCertName string
+
+param webAppNodeVersion object
+
+param webAppSettings object
 
 // This param is currently used to prevent appsettings being updated during "what-if" runs in the build pipeline because it throws an error otherwise
 // Looks like we can remove this once this issue is resolved:
 // https://github.com/Azure/arm-template-whatif/issues/65
 param dryRun bool = false
 
-var resourceNameSuffix = toLower('${projectName}-${environment}')
+// Create resource name prefixes for "shared" and "environment" resources
 
-var webAppName = '${resourceNameSuffix}-app'
+var envResourceGroupName = resourceGroup().name
+var envResourceNamePrefix = toLower('${projectName}-${environment}')
+var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${projectName}')
 
-var nodeVersion = '12.13.0'
+// Define the key vault resource if required
+
+var keyVaultName = '${envResourceNamePrefix}-kv'
+
+// The only reason to use key vault (currently) is if we are using a custom SSL cert
+var useKeyVault = !empty(webAppCertName)
+
+resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = if(useKeyVault) {
+  name: keyVaultName
+}
+
+// Define the app service resources
+
+var webAppName = '${sharedResourceNamePrefix}-app'
 
 module webApp 'app-service.bicep' = {
   name: 'web-app'
+  scope: resourceGroup(sharedResourceGroupName)
   params: {
     location: location
-    appServicePlanName: '${resourceNameSuffix}-asp'
+    appServicePlanName: '${sharedResourceNamePrefix}-asp'
     appServiceName: webAppName
     skuName: webAppSkuName
     skuCapacity: webAppSkuCapacity
-    nodeVersion: nodeVersion
+    nodeVersion: webAppNodeVersion.node
+    slotName: webAppSlotName
   }
 }
 
+var webAppServicePlanId = webApp.outputs.appServicePlanId
 var webAppServiceId = webApp.outputs.appServiceId
 var webAppServiceHostname = webApp.outputs.appServiceHostname
+
+// Define the app service domain
+
+module webAppDomain 'app-service-domain.bicep' = if(!empty(webAppDomainName)) {
+  name: 'web-app-domain'
+  scope: resourceGroup(sharedResourceGroupName)
+  params: {
+    location: location
+    appServicePlanId: webAppServicePlanId
+    appServiceName: webAppName
+    slotName: webAppSlotName
+    domainName: webAppDomainName
+    certName: webAppCertName
+    keyVaultId: useKeyVault ? keyVault.id : ''
+    keyVaultName: useKeyVault ? keyVaultName : ''
+  }
+}
+
+var webAppServicePrimaryDomain = empty(webAppDomainName) ? webAppServiceHostname : webAppDomainName
+
+// Define the application insights resource
 
 module webAppInsights 'app-insights.bicep' = {
   name: 'web-app-insights'
   params: {
     location: location
-    resourceName: '${resourceNameSuffix}-ai'
+    resourceName: '${envResourceNamePrefix}-ai'
     appServiceId: webAppServiceId
   }
 }
 
 var webAppInsightsInstrumentationKey = webAppInsights.outputs.instrumentationKey
 
+// Define the CDN resources
+
 module cdn 'cdn.bicep' = {
   name: 'cdn'
   params: {
     location: location
-    resourceName: '${resourceNameSuffix}-cdn'
-    originHostname: webAppServiceHostname
+    resourceName: '${envResourceNamePrefix}-cdn'
+    originHostname: webAppServicePrimaryDomain
   }
 }
 
-var baseUrl = 'https://${webAppServiceHostname}'
+// Define the app service settings - these depend on outputs from other resources so cannot be defined earlier as part of the app service definition
+
+var baseUrl = 'https://${webAppServicePrimaryDomain}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
 
-// App service settings depend on outputs from other resources so we do this last
+// These are the base settings required for the deployment
 var webAppDeploymentSettings = {
   APP_ENV: environment
   BASE_URL: baseUrl
@@ -86,21 +144,30 @@ var webAppDeploymentSettings = {
   NEXT_PUBLIC_BUILD_ID: buildId
   NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
   NODE_ENV: 'production'
-  WEBSITE_NODE_DEFAULT_VERSION: nodeVersion
+  // See https://github.com/projectkudu/kudu/wiki/Configurable-settings#changing-the-timeout-before-external-commands-are-killed
+  SCM_COMMAND_IDLE_TIMEOUT: 180
+  WEBSITE_NODE_DEFAULT_VERSION: webAppNodeVersion.node
+  WEBSITE_NPM_DEFAULT_VERSION: webAppNodeVersion.npm
 }
 
+// Merge the default settings into any additional settings provided via the `webAppSettings` parameter
 var webAppConfigSettings = union(webAppSettings, webAppDeploymentSettings)
 
-module webAppConfig 'app-service-config.bicep' = if (!dryRun) {
+module webAppConfig 'app-service-config.bicep' = if(!dryRun) {
   name: 'web-app-config'
+  scope: resourceGroup(sharedResourceGroupName)
   params: {
     appServiceName: webAppName
+    slotName: webAppSlotName
     appSettings: webAppConfigSettings
   }
 }
 
+// Set deployment outputs
+
 output webAppEnvironment string = environment
 output webAppName string = webAppName
 output webAppBaseUrl string = baseUrl
+output webAppSettings object = webAppConfigSettings
 output webAppInsightsInstrumentationKey string = webAppInsightsInstrumentationKey
 output cdnEndpointUrl string = cdnEndpointUrl

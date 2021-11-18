@@ -10,7 +10,17 @@ param skuCapacity int
 
 param nodeVersion string
 
+param slotName string
+
+// "production" is the name of the "default" slot - essentially it means "no slot"
+var isSlotDeploy = slotName != 'production'
+
+// "F" and "D" SKUs use shard infrastructure and have more limited features
+var isSharedComputeSku = startsWith(skuName, 'F') || startsWith(skuName, 'D')
+
 var minTlsVersion = '1.2'
+
+// Define the app service plan
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
   name: appServicePlanName
@@ -20,6 +30,8 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2020-12-01' = {
     capacity: skuCapacity
   }
 }
+
+// Define the app service
 
 resource appService 'Microsoft.Web/sites@2020-12-01' = {
   name: appServiceName
@@ -38,12 +50,29 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
       http20Enabled: true
       minTlsVersion: minTlsVersion
       nodeVersion: nodeVersion
-      // If your app service plan allows it then it's recommended to uncomment these settings
-      // use32BitWorkerProcess: false
-      // alwaysOn: true
+      // 64 bit and always on not available on anything lower than Basic SKUs
+      use32BitWorkerProcess: isSharedComputeSku
+      alwaysOn: !isSharedComputeSku
     }
   }
 }
 
-output appServiceId string = appService.id
-output appServiceHostname string = appService.properties.defaultHostName
+resource appServiceSlot 'Microsoft.Web/sites/slots@2020-12-01' = if(isSlotDeploy) {
+  name: '${appService.name}/${slotName}'
+  location: location
+  properties: {
+    httpsOnly: true
+    siteConfig: {
+      http20Enabled: true
+      minTlsVersion: minTlsVersion
+      nodeVersion: nodeVersion
+      // 64 bit and always on not available on anything lower than Basic SKUs
+      use32BitWorkerProcess: isSharedComputeSku
+      alwaysOn: !isSharedComputeSku
+    }
+  }
+}
+
+output appServicePlanId string = appServicePlan.id
+output appServiceId string = isSlotDeploy ? appServiceSlot.id : appService.id
+output appServiceHostname string = isSlotDeploy ? appServiceSlot.properties.defaultHostName : appService.properties.defaultHostName
