@@ -83,8 +83,8 @@ To create the Environments:
   * Name it `preview`
   * Give it a description if you want to
   * Leave all other settings as their defaults, and click Create
-* Repeat the above to create another environment named `production`
-* Edit the `production` environment
+* Repeat the above to create another environment named `prod` (production)
+* Edit the `prod` environment
   * Click More actions > Approvals and checks
   * Click Add
     * Select Approvals, click Next
@@ -96,7 +96,7 @@ To create the Environments:
 
 #### Create Variable Groups in Azure DevOps
 
-Variable Groups are used to define variables that are used by the Pipeline. The `next-app-env-vars` Variable Group is used to hold "default" or "shared" values applicable to all target environments, and the `next-app-env-vars-preview` and `next-app-env-vars-production` Variable Groups hold environment-specific Variables or can override Variables with the same name in the `next-app-env-vars` Variable Group.
+Variable Groups are used to define variables that are used by the Pipeline. The `next-app-env-vars` Variable Group is used to hold "default" or "shared" values applicable to all target environments, and the `next-app-env-vars-preview` and `next-app-env-vars-prod` Variable Groups hold environment-specific Variables or can override Variables with the same name in the `next-app-env-vars` Variable Group.
 
 To create the Variable Groups:
 
@@ -107,7 +107,7 @@ To create the Variable Groups:
   * `next-app-env-vars-preview`
     * `AzureResourceGroup` = {Name of your `preview` environment Resource Group}
     * `AzureServiceConnection` = {Name of your `preview` environment Service Connection}
-  * `next-app-env-vars-production`
+  * `next-app-env-vars-prod`
     * `AzureResourceGroup` = {Name of your `production` Resource Group}
     * `AzureServiceConnection` = {Name of your `production` Service Connection}
 
@@ -240,11 +240,11 @@ To update the Variable Groups:
 
 * Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Groups (or equivalents if you have renamed them):
   * `next-app-env-vars`
-    * `WebAppSkuName` = {`B1` is the minimum Dev/Test SKU, and `S1` is the minimum production SKU}
+    * `WebAppSkuName` = {`B1` is the minimum Dev/Test SKU, and `S1` is the minimum Production SKU}
     * `AzureSharedResourceGroup` = {Name of your "shared" Resource Group}
   * `next-app-env-vars-preview`
     * `WebAppSlotName` = `preview`
-  * `next-app-env-vars-production`
+  * `next-app-env-vars-prod`
     * `WebAppSlotName` = `production`
 
 ### Add custom domain name and SSL
