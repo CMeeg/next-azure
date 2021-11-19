@@ -1,6 +1,6 @@
 # next-azure
 
-This repository contains a [Create Next App](https://nextjs.org/docs/api-reference/create-next-app) example for deploying a Next.js v11 app to Microsoft Azure App Services (including a CDN for static assets, and Application Insights for monitoring) via Azure DevOps Pipelines.
+This repository contains a [Create Next App](https://nextjs.org/docs/api-reference/create-next-app) example for deploying a Next.js v12 app to Microsoft Azure App Services (including a CDN for static assets, and Application Insights for monitoring) via Azure DevOps Pipelines.
 
 The Next.js app included in this example is the same app created by the default Create Next App output, but with some additional files, components and config changes to support deployment to Azure.
 
@@ -455,7 +455,3 @@ Yarn v1 is being used as that is what I am currently using in my development env
 Yarn could be swapped out for npm without any problems, but I haven't tried it myself so don't have exact instructions for doing so. In theory, you should be able to search for `yarn` and just replace with the `npm` equivalent. Please raise an issue if you are doing this and having problems.
 
 I have tried pnpm but had issues because of limited support for [symlinks](https://github.com/projectkudu/kudu/wiki/Azure-Web-App-sandbox#symbolic-link-creation) within the App Service sandbox and couldn't find a way forward. Please raise an issue if you know a way!
-
-### Why isn't the latest version of Next.js being used?
-
-I just haven't had time to upgrade yet, but will as soon as I find the time!
