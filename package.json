@@ -12,7 +12,7 @@
   "dependencies": {
     "@microsoft/applicationinsights-web": "^2.7.0",
     "applicationinsights": "^2.1.6",
-    "next": "11.1.2",
+    "next": "12",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "tslib": "^2.3.1"
