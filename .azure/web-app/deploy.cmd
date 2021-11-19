@@ -2,7 +2,7 @@
 
 :: ----------------------
 :: KUDU Deployment Script
-:: Version: 1.0.9
+:: Version: 1.0.17
 :: ----------------------
 
 :: Prerequisites
@@ -97,15 +97,10 @@ IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
 :: 2. Select node version
 call :SelectNodeVersion
 
-:: 3. Install Yarn
-echo Verifying Yarn Install.
-call :ExecuteCmd !NPM_CMD! install yarn -g
-
-:: 4. Install Yarn packages
-echo Installing Yarn Packages.
+:: 3. Install npm packages
 IF EXIST "%DEPLOYMENT_TARGET%\package.json" (
   pushd "%DEPLOYMENT_TARGET%"
-  call :ExecuteCmd C:\local\AppData\npm\yarn install --frozen-lockfile --production --network-timeout=100000
+  call :ExecuteCmd !NPM_CMD! install --production
   IF !ERRORLEVEL! NEQ 0 goto error
   popd
 )
