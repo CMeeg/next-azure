@@ -28,7 +28,7 @@ You can use the Create Next App tool to initialise your project using this examp
 * Init a new Git repo for your app and push the "main" branch to a remote e.g. on GitHub
 * Create a new feature branch where you will do the basic setup for your app e.g. `feature/create-next-app`
 * Follow the [Create Next App docs](https://nextjs.org/docs/api-reference/create-next-app) to create a Next.js app using this example repo as a template - you will need to use the `-e, --example` option
-  * For example: `yarn create next-app -e https://github.com/CMeeg/next-azure`
+  * For example: `npx create-next-app@latest -e https://github.com/CMeeg/next-azure`
 * Commit and push your changes
 
 > N.B. This example is currently [not using TypeScript](#can-i-use-typescript-with-this-example).
@@ -442,16 +442,26 @@ In short, no, but it is recommended for the performance of your app. If you don'
 
 It depends on a few factors (e.g. whether the infrastructure resources already exist or need to be created or updated by the pipeline, the size and complexity of your app, the app service plan SKU that you have chosen), but from running this sample a few times it has taken anywhere between 5 - 15 mins to run to completion.
 
-The first time the pipeline runs or after any changes to `package.json` dependencies (anything that causes a change in the `yarn.lock` file) will be the slowest as these runs will not benefit from a `node_modules` cache task present in the pipeline.
+The first time the pipeline runs or after any changes to `package.json` dependencies (anything that causes a change in the `package-lock.json` file) will be the slowest as these runs will not benefit from a `node_modules` cache task present in the pipeline.
 
-There is also a second hit from `yarn install` in this case as it runs during the build step in the pipeline, but it also gets executed on the app service because the node server needs access to production node module dependencies. The `node_modules` output from the build step is not deployed with the rest of the build output because a) it includes `devDependencies` that you don't need on the server; and b) deploying `node_modules` from the pipeline to the app service along with the rest of the application files via zip deploy has proven to be much slower than running a production-only `yarn install` post-deployment.
+There is also a second hit from `npm install` in this case as it runs during the build step in the pipeline, but it also gets executed on the app service because the node server needs access to production node module dependencies. The `node_modules` output from the build step is not deployed with the rest of the build output because a) it includes `devDependencies` that you don't need on the server; and b) deploying `node_modules` from the pipeline to the app service along with the rest of the application files via zip deploy has proven to be much slower than running a production-only `npm install` post-deployment.
 
-As mentioned, caching is in place in the pipeline (based on the contents of the `yarn.lock` file) for subsequent runs, and if no changes have been made to dependencies then the time required to run `yarn install` in the pipeline and on the app service is much reduced.
+As mentioned, caching is in place in the pipeline (based on the contents of the `package-lock.json` file) for subsequent runs, and if no changes have been made to dependencies then the time required to run `npm install` in the pipeline and on the app service is much reduced.
 
-### Do I have to use yarn, or can I use npm, or pnpm?
+### Do I have to use npm, or can I use Yarn, or pnpm?
 
-Yarn v1 is being used as that is what I am currently using in my development environment.
+npm and Yarn v1 (Yarn Classic) will both work equally well.
 
-Yarn could be swapped out for npm without any problems, but I haven't tried it myself so don't have exact instructions for doing so. In theory, you should be able to search for `yarn` and just replace with the `npm` equivalent. Please raise an issue if you are doing this and having problems.
+npm is being used in the Pipeline because it seems like a sensible default - it is installed alongside node so it's safer to assume people will be using that over Yarn, which requires a separate install.
+
+If you are using Yarn v1 though you can:
+
+* Edit `.azure/azure-pipelines.yml`
+  * Replace references to `package-lock.json` with `yarn.lock`
+  * Replace the `npm` commands with their `yarn` equivalents
+* Edit `.azure/web-app/deploy.cmd`
+  * Reverse the changes made in [this commit](https://github.com/CMeeg/next-azure/commit/9967d3969b51a1f658c4e657cfdf9e6c3309947f#diff-04ffbb94a2cebcdd1803a5a947b790e7e9e756fb01358055242b439125963502L100-L111)
+
+It is possible that other versions of Yarn will work, but I haven't tried anything above v1 so cannot say for sure.
 
 I have tried pnpm but had issues because of limited support for [symlinks](https://github.com/projectkudu/kudu/wiki/Azure-Web-App-sandbox#symbolic-link-creation) within the App Service sandbox and couldn't find a way forward. Please raise an issue if you know a way!
