@@ -78,7 +78,7 @@ var swapSlotSiteConfig = union(siteConfig, {
 })
 
 resource appServiceSwapSlot 'Microsoft.Web/sites/slots@2020-12-01' = if(hasSwapSlot) {
-  name: '${appService.name}/${swapSlotName}'
+  name: '${appService.name}/${hasSwapSlot ? swapSlotName : 'undefined'}' // `undefined` won't ever be used - it is only there because without it a `What-If` ARM deployment fails
   location: location
   properties: {
     httpsOnly: true

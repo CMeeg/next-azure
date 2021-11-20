@@ -24,6 +24,6 @@ resource webAppSlotConfig 'Microsoft.Web/sites/slots/config@2020-12-01' = if(isS
 }
 
 resource webAppSwapSlotConfig 'Microsoft.Web/sites/slots/config@2020-12-01' = if(hasSwapSlot) {
-  name: '${appServiceName}/${swapSlotName}/appsettings'
+  name: '${appServiceName}/${hasSwapSlot ? swapSlotName : 'undefined'}/appsettings' // `undefined` won't ever be used - it is only there because without it ARM deployment fails
   properties: appSettings
 }
