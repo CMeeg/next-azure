@@ -34,6 +34,8 @@ param webAppSkuCapacity int
 
 param webAppSlotName string
 
+param webAppSwapSlotName string
+
 param webAppDomainName string
 
 param webAppCertName string
@@ -42,27 +44,11 @@ param webAppNodeVersion object
 
 param webAppSettings object
 
-// This param is currently used to prevent appsettings being updated during "what-if" runs in the build pipeline because it throws an error otherwise
-// Looks like we can remove this once this issue is resolved:
-// https://github.com/Azure/arm-template-whatif/issues/65
-param dryRun bool = false
-
 // Create resource name prefixes for "shared" and "environment" resources
 
 var envResourceGroupName = resourceGroup().name
 var envResourceNamePrefix = toLower('${projectName}-${environment}')
 var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${projectName}')
-
-// Define the key vault resource if required
-
-var keyVaultName = '${envResourceNamePrefix}-kv'
-
-// The only reason to use key vault (currently) is if we are using a custom SSL cert
-var useKeyVault = !empty(webAppCertName)
-
-resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = if(useKeyVault) {
-  name: keyVaultName
-}
 
 // Define the app service resources
 
@@ -79,16 +65,26 @@ module webApp 'app-service.bicep' = {
     skuCapacity: webAppSkuCapacity
     nodeVersion: webAppNodeVersion.node
     slotName: webAppSlotName
+    swapSlotName: webAppSwapSlotName
   }
 }
 
 var webAppServicePlanId = webApp.outputs.appServicePlanId
 var webAppServiceId = webApp.outputs.appServiceId
-var webAppServiceHostname = webApp.outputs.appServiceHostname
+var webAppServiceDefaultHostname = webApp.outputs.appServiceDefaultHostname
 
 // Define the app service domain
 
-module webAppDomain 'app-service-domain.bicep' = if(!empty(webAppDomainName)) {
+var hasCustomDomain = !empty(webAppDomainName) && !empty(webAppCertName)
+
+// The only reason to use key vault (currently) is if we are using a custom domain as key vault is used to store the SSL cert
+var keyVaultName = '${envResourceNamePrefix}-kv'
+
+resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = if(hasCustomDomain) {
+  name: keyVaultName
+}
+
+module webAppDomain 'app-service-domain.bicep' = if(hasCustomDomain) {
   name: 'web-app-domain'
   scope: resourceGroup(sharedResourceGroupName)
   params: {
@@ -98,12 +94,12 @@ module webAppDomain 'app-service-domain.bicep' = if(!empty(webAppDomainName)) {
     slotName: webAppSlotName
     domainName: webAppDomainName
     certName: webAppCertName
-    keyVaultId: useKeyVault ? keyVault.id : ''
-    keyVaultName: useKeyVault ? keyVaultName : ''
+    keyVaultId: hasCustomDomain ? keyVault.id : ''
+    keyVaultName: keyVaultName
   }
 }
 
-var webAppServicePrimaryDomain = empty(webAppDomainName) ? webAppServiceHostname : webAppDomainName
+var webAppServiceHostname = hasCustomDomain ? webAppDomainName : webAppServiceDefaultHostname
 
 // Define the application insights resource
 
@@ -125,13 +121,13 @@ module cdn 'cdn.bicep' = {
   params: {
     location: location
     resourceName: '${envResourceNamePrefix}-cdn'
-    originHostname: webAppServicePrimaryDomain
+    originHostname: webAppServiceHostname
   }
 }
 
 // Define the app service settings - these depend on outputs from other resources so cannot be defined earlier as part of the app service definition
 
-var baseUrl = 'https://${webAppServicePrimaryDomain}'
+var baseUrl = 'https://${webAppServiceHostname}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
 
@@ -153,12 +149,13 @@ var webAppDeploymentSettings = {
 // Merge the default settings into any additional settings provided via the `webAppSettings` parameter
 var webAppConfigSettings = union(webAppSettings, webAppDeploymentSettings)
 
-module webAppConfig 'app-service-config.bicep' = if(!dryRun) {
+module webAppConfig 'app-service-config.bicep' = {
   name: 'web-app-config'
   scope: resourceGroup(sharedResourceGroupName)
   params: {
     appServiceName: webAppName
     slotName: webAppSlotName
+    swapSlotName: webAppSwapSlotName
     appSettings: webAppConfigSettings
   }
 }
