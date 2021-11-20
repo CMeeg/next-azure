@@ -34,6 +34,8 @@ param webAppSkuCapacity int
 
 param webAppSlotName string
 
+param webAppSwapSlotName string
+
 param webAppDomainName string
 
 param webAppCertName string
@@ -63,13 +65,13 @@ module webApp 'app-service.bicep' = {
     skuCapacity: webAppSkuCapacity
     nodeVersion: webAppNodeVersion.node
     slotName: webAppSlotName
+    swapSlotName: webAppSwapSlotName
   }
 }
 
 var webAppServicePlanId = webApp.outputs.appServicePlanId
 var webAppServiceId = webApp.outputs.appServiceId
 var webAppServiceDefaultHostname = webApp.outputs.appServiceDefaultHostname
-var isWebAppSlotDeploy = webApp.outputs.isSlotDeploy
 
 // Define the app service domain
 
@@ -90,7 +92,6 @@ module webAppDomain 'app-service-domain.bicep' = if(hasCustomDomain) {
     appServicePlanId: webAppServicePlanId
     appServiceName: webAppName
     slotName: webAppSlotName
-    isSlotDeploy: isWebAppSlotDeploy
     domainName: webAppDomainName
     certName: webAppCertName
     keyVaultId: hasCustomDomain ? keyVault.id : ''
@@ -154,7 +155,7 @@ module webAppConfig 'app-service-config.bicep' = {
   params: {
     appServiceName: webAppName
     slotName: webAppSlotName
-    isSlotDeploy: isWebAppSlotDeploy
+    swapSlotName: webAppSwapSlotName
     appSettings: webAppConfigSettings
   }
 }

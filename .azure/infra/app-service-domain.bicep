@@ -6,8 +6,6 @@ param appServiceName string
 
 param slotName string
 
-param isSlotDeploy bool
-
 param domainName string
 
 param certName string
@@ -15,6 +13,9 @@ param certName string
 param keyVaultId string
 
 param keyVaultName string
+
+// "production" is the name of the "default" slot - essentially it means "no slot"
+var isSlotDeploy = slotName != 'production'
 
 resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' =  {
   name: '${keyVaultName}-${certName}'
