@@ -174,33 +174,13 @@ If you're familiar with the output of "Create Next App" then you will be mostly 
 
 > If you have an existing Next.js app that you are looking to deploy to Azure you could use the above as a rough guide for where to look for code that you can copy from this example repo to your own project.
 
-### Use the `useApplicationInsights` hook
-
-The Application Insights implementation included in this sample app uses the [Node SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/nodejs) for tracking initial requests to the server as well as the [JavaScript SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/javascript) for tracking client requests including "page views" when navigating via client-side routing.
-
-If you want to review and change the configuration you can:
-
-* Find the server config in `server.js`
-* Find the client config in `components/AppInsights/Sdk.jsx`
-
-If you want to use Application Insights to track custom events or metrics you can import and use the provided hook, which will give you access to the Application Insights instance. You should only use this instance inside `useEffect` though as it's client-side only:
-
-```javascript
-import { useAppInsights } from './components/AppInsights'
-
-// This gives you access to the app insights instance
-const appInsights = useAppInsights()
-```
-
-You can then call [functions of the telemetry client](https://docs.microsoft.com/en-us/azure/azure-monitor/app/api-custom-events-metrics) on that instance as needed.
-
 ### Use a deployment slot for the preview environment
 
 By default, the Pipeline will deploy your app to a separate App Service per target environment, but it also supports deploying to a single App Service using [deployment slots](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) for each target environment.
 
-Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is not the default used here because there is a cost involved and so has been made an opt-in feature as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots).
+Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is an opt-in feature as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots) because there is a cost involved.
 
-> The Pipeline deploys to one slot per environment, but doesn't swap slots due to the nature of Next.js's Automatic Static Optimisation meaning that certain configuration values get "built-in" to the application during the build step of the Pipeline and are not read dynamically from the slot's app settings on each request. Features such as [Runtime Configuration](https://nextjs.org/docs/api-reference/next.config.js/runtime-configuration) could provide a solution to this, but using that means you must opt out of Automatic Static Optimisation, which is not recommended for most applications.
+> The Pipeline deploys to one slot per environment, and supports [auto swap](#configure-auto-swap-for-the-production-environment).
 
 Assuming you have followed the [Getting started](#getting-started) guide and the Pipeline has been or is ready to run, you can modify your setup in the following ways to use deployment slots:
 
@@ -246,6 +226,21 @@ To update the Variable Groups:
     * `WebAppSlotName` = `preview`
   * `next-app-env-vars-prod`
     * `WebAppSlotName` = `production`
+
+### Configure auto swap for the production environment
+
+[Auto swap](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#configure-auto-swap) involves deploying the app to a "source" deployment slot that automatically swaps to a "target" deployment slot. It is useful because it:
+
+* Minimises downtime - the app will be "warmed up" in the source slot before it is swapped with the target slot
+* Enables easy rollback - if there is an issue post-deployment and you require rollback you can swap the target slot with the source slot (that now holds the previous version of your app)
+
+You can configure auto swap for any target deployment slot, but it is most common to use it just for the production environment because typically that's the only environment where the above benefits will really matter, plus it effectively consumes one of your available slots so you wouldn't want to use it for every environment.
+
+Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-the-preview-environment) you can modify your setup in the following way to use auto swap for your production environment:
+
+* Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed it):
+  * `next-app-env-vars-prod`
+    * `WebAppSwapSlotName` = `prodswap` (or feel free to name it what you like!)
 
 ### Add custom domain name and SSL
 
@@ -384,6 +379,26 @@ Where:
 You can edit the Bicep scripts to change this convention if it doesn't suit you or your team.
 
 > Feel free to change the names of any resources created outside of the Bicep scripts also, but do a search in your repo to make sure they are not hardcoded anywhere - this shouldn't be the case except for the [Variable Group](#create-variable-groups-in-azure-devops) names because those names have to be hardcoded in the `azure-pipelines.yml`.
+
+### Use the `useApplicationInsights` hook
+
+The Application Insights implementation included in this sample app uses the [Node SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/nodejs) for tracking initial requests to the server as well as the [JavaScript SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/javascript) for tracking client requests including "page views" when navigating via client-side routing.
+
+If you want to review and change the configuration you can:
+
+* Find the server config in `server.js`
+* Find the client config in `components/AppInsights/Sdk.jsx`
+
+If you want to use Application Insights to track custom events or metrics you can import and use the provided hook, which will give you access to the Application Insights instance. You should only use this instance inside `useEffect` though as it's client-side only:
+
+```javascript
+import { useAppInsights } from './components/AppInsights'
+
+// This gives you access to the app insights instance
+const appInsights = useAppInsights()
+```
+
+You can then call [functions of the telemetry client](https://docs.microsoft.com/en-us/azure/azure-monitor/app/api-custom-events-metrics) on that instance as needed.
 
 ## FAQ
 
