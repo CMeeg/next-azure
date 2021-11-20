@@ -75,4 +75,5 @@ resource appServiceSlot 'Microsoft.Web/sites/slots@2020-12-01' = if(isSlotDeploy
 
 output appServicePlanId string = appServicePlan.id
 output appServiceId string = isSlotDeploy ? appServiceSlot.id : appService.id
-output appServiceHostname string = isSlotDeploy ? appServiceSlot.properties.defaultHostName : appService.properties.defaultHostName
+output appServiceDefaultHostname string = isSlotDeploy ? appServiceSlot.properties.defaultHostName : appService.properties.defaultHostName
+output isSlotDeploy bool = isSlotDeploy
