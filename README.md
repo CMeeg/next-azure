@@ -9,6 +9,7 @@ Changes have been kept to a minimum, but are enough to get you up and running wi
 * A CI/CD pipeline for building and deploying a Next.js app to Azure
   * The pipeline will provision the necessary infrastructure for you in Azure as described in the included [Bicep](https://github.com/Azure/bicep) files
 * A Next.js app hosted and running in Azure App Services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration)
+  * Next's [Middleware](https://nextjs.org/docs/middleware) feature is also suported
 * A CDN for caching static assets, and [Application Insights](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for application monitoring
 
 > If you only need support for [statically generated pages](https://nextjs.org/docs/advanced-features/static-html-export) via `next export` then check out [Azure Static Web Apps](https://docs.microsoft.com/en-us/azure/static-web-apps/deploy-nextjs) instead.
@@ -35,22 +36,38 @@ You can use the Create Next App tool to initialise your project using this examp
 
 ### Create Azure Resource Groups and Pipeline
 
-There is some manual setup required in Azure:
+There is some initial setup required in Azure:
 
 * Resource Groups must be created in the Azure Portal into which the resources required for your app will be deployed
 * Service Connections and Variable Groups must be created in Azure DevOps that will be used by the Pipeline
 
-#### Create Resource Groups via the Azure Portal
+> It is assumed that you already have an Azure account and a Subscription where the resources for your project will be deployed, and an Azure DevOps organization and Project where the Pipeline for deploying your project will be situated.
 
-You will be creating one Resource Group for each target environment. By default, two environments are supported, but [more can be added](#add-additional-target-environments).
+#### Install (or update) required software
+
+The initial setup is mostly scripted with PowerShell and the Azure CLI so you will need to have the following software installed:
+
+* [PowerShell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) (i.e. PowerShell Core)
+* [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+
+> If you already have them installed it might be a good idea to make sure you have updated to the latest versions.
+
+#### Create Azure Resource Groups
+
+You will be creating one Resource Group for each target environment. By default, two environments are supported, `preview` and `prod` (production), but [more can be added](#add-additional-target-environments).
 
 To create the Resource Groups:
 
-* Create or switch to the Subscription in the [Azure Portal](https://portal.azure.com/) where you will deploy your app
-* Create a Resource Group for `preview` environment resources e.g. `next-azure-preview-rg`
-* Create a Resource Group for `production` environment resources e.g. `next-azure-prod-rg`
+* Login to your Azure Account
+  * `az login`
+* When you login you should see some output that shows the current active (default) subscription
+  * [Switch Subscription](https://docs.microsoft.com/en-us/cli/azure/manage-azure-subscriptions-azure-cli#change-the-active-subscription) if this is not where you want to deploy your resources
+* Run `./.azure/setup/init.ps1 -ResourcePrefix {resource_prefix} -Location {location}`, where
+  * `{resource_prefix}` is a string that will be used as a prefix for the Resource Groups and other resources created by the Pipeline
+  * `{location}` is the Azure Location (Region) Name where the Resource Groups should be created
+    * Run `az account list-locations --output table` to get a list of locations - it is the `Name` property that must be provided as `{location}`
 
-> The name of the Resource Groups don't really "matter" (i.e. they can be whatever you want them to be), but the convention used in the Bicep files for resource names is generally `{projectName}-{environment}-{resourceSuffix}`. You can change these conventions if you like though - see the [Usage section](#change-the-resource-naming-conventions).
+> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
 
 #### Create Service Connections in Azure DevOps
 
