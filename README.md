@@ -36,12 +36,17 @@ You can use the Create Next App tool to initialise your project using this examp
 
 ### Create Azure Resource Groups and Pipeline
 
-There is some initial setup required in Azure:
+There is some initial setup required in Azure that can be achieved by running a PowerShell script provided in this repo.
 
-* Resource Groups must be created in the Azure Portal into which the resources required for your app will be deployed
-* Service Connections and Variable Groups must be created in Azure DevOps that will be used by the Pipeline
+The script creates:
 
-> It is assumed that you already have an Azure account and a Subscription where the resources for your project will be deployed, and an Azure DevOps organization and Project where the Pipeline for deploying your project will be situated.
+* Resource Groups in Azure into which the resources required for your app will be deployed
+* Service Connections and Variable Groups in Azure DevOps that will be used by the Pipeline
+
+It is assumed that you already have:
+
+* An Azure account and a Subscription where the resources for your project will be deployed; and
+* An Azure DevOps organization and Project where the Pipeline for deploying your project will be situated
 
 #### Install (or update) required software
 
@@ -49,46 +54,30 @@ The initial setup is mostly scripted with PowerShell and the Azure CLI so you wi
 
 * [PowerShell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) (i.e. PowerShell Core)
 * [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+* [Azure CLI Azure DevOps extension](https://docs.microsoft.com/en-us/azure/devops/cli/?view=azure-devops)
 
 > If you already have them installed it might be a good idea to make sure you have updated to the latest versions.
 
-#### Create Azure Resource Groups
+#### Run the Azure initialisation script
 
-You will be creating one Resource Group for each target environment. By default, two environments are supported, `preview` and `prod` (production), but [more can be added](#add-additional-target-environments).
+The initialisation script will create the necessary resources in Azure and Azure DevOps for two environments, `preview` and `prod` (production), but [more can be added](#add-additional-target-environments).
 
-To create the Resource Groups:
+To use the initialisation script:
 
 * Login to your Azure Account
   * `az login`
-* When you login you should see some output that shows the current active (default) subscription
-  * [Switch Subscription](https://docs.microsoft.com/en-us/cli/azure/manage-azure-subscriptions-azure-cli#change-the-active-subscription) if this is not where you want to deploy your resources
-* Run `./.azure/setup/init.ps1 -ResourcePrefix {resource_prefix} -Location {location}`, where
-  * `{resource_prefix}` is a string that will be used as a prefix for the Resource Groups and other resources created by the Pipeline
+* When you login you should see some output that shows the current active (default) subscription - this is where your Resource Groups will be created when you run the script
+  * [Switch Subscription](https://docs.microsoft.com/en-us/cli/azure/manage-azure-subscriptions-azure-cli#change-the-active-subscription) if this is not where you want to deploy your Azure resources
+* Set the Azure DevOps Project where your Pipeline will be created
+  * `az devops configure --defaults organization={organization_url} project={project_name}`
+* Run `./.azure/setup/init.ps1 -ResourcePrefix {resource_prefix} -Location {location}`
+  * `{resource_prefix}` is a string that will be used as a prefix for the Resource Groups and other resources created by the Pipeline - it can be any value you like, but it's usually a good idea to keep it short
   * `{location}` is the Azure Location (Region) Name where the Resource Groups should be created
     * Run `az account list-locations --output table` to get a list of locations - it is the `Name` property that must be provided as `{location}`
 
 > The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
 
-#### Create Service Connections in Azure DevOps
-
-Service Connections will be used to authenticate and authorise deployment operation from the Pipeline to the Resource Groups.
-
-To create the Service Connections:
-
-* Create or enter the [Azure DevOps](https://dev.azure.com/) Project where you will create your Pipeline
-* Go to Projects settings > Pipelines > Service connections
-* Create a new service connection for the `preview` environment
-  * Select `Azure resource manager` as connection type
-  * Select `Service principal (automatic)` as authentication method
-  * When prompted, sign in using credentials that have access to the Subscription and Resource Groups you have setup in the Azure Portal
-  * Select your scope level as `Subscription` and select the Subscription and Resource Group that is to be used for `preview` environment resources
-  * Set the service connection name e.g. `next-azure-preview`
-  * Add a description if you wish
-  * Choose to "Grant access to all pipelines"
-  * Save
-* Repeat all of the above steps to create a separate Service Connection for the `production` environment
-
-> The choice to "Grant access to all pipelines" when creating the Service Principal(s) is done for convenience in these getting started instructions, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
+> The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
 
 #### Create Environments in Azure DevOps
 
