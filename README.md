@@ -50,7 +50,7 @@ It is assumed that you already have:
 
 #### Install (or update) required software
 
-The initial setup is mostly scripted with PowerShell and the Azure CLI so you will need to have the following software installed:
+The scripts use PowerShell and the Azure CLI so you will need to have the following software installed:
 
 * [PowerShell](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell) (i.e. PowerShell Core)
 * [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
@@ -71,42 +71,25 @@ To use the initialisation script:
 * Set the Azure DevOps Project where your Pipeline will be created
   * `az devops configure --defaults organization={organization_url} project={project_name}`
 * Run `./.azure/setup/init.ps1 -ResourcePrefix {resource_prefix} -Location {location}`
-  * `{resource_prefix}` is a string that will be used as a prefix for the Resource Groups and other resources created by the Pipeline - it can be any value you like, but it's usually a good idea to keep it short
+  * `{resource_prefix}` is a string that will be used as a prefix for the Resource Groups and other resources created by the Pipeline - it can be any value you like, but it's usually a good idea to keep it short due to [resource name length limits](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules)
   * `{location}` is the Azure Location (Region) Name where the Resource Groups should be created
     * Run `az account list-locations --output table` to get a list of locations - it is the `Name` property that must be provided as `{location}`
 
-> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
+> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs - search for `Get-NextAzureResourceName`. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
 
 > The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
 
-#### Create Variable Groups in Azure DevOps
-
-Variable Groups are used to define variables that are used by the Pipeline. The `next-app-env-vars` Variable Group is used to hold "default" or "shared" values applicable to all target environments, and the `next-app-env-vars-preview` and `next-app-env-vars-prod` Variable Groups hold environment-specific Variables or can override Variables with the same name in the `next-app-env-vars` Variable Group.
-
-To create the Variable Groups:
-
-* Go to Pipelines > Library, and create the following Variable Groups and Variables:
-  * `next-app-env-vars`
-    * `WebAppSkuName` = {The name of the SKU you want your app service to use - `F1` (Free) is the minimum}
-    * `WebAppSkuCapacity` = {The number of app service instances you wish to scale out to by default e.g. `1`}
-  * `next-app-env-vars-preview`
-    * `AzureResourceGroup` = {Name of your `preview` environment Resource Group}
-    * `AzureServiceConnection` = {Name of your `preview` environment Service Connection}
-  * `next-app-env-vars-prod`
-    * `AzureResourceGroup` = {Name of your `production` Resource Group}
-    * `AzureServiceConnection` = {Name of your `production` Service Connection}
-
-> You may want to change the name of these Variable Groups, in which case you will also need to update the names in `.azure/azure-pipelines.yml` where they are referenced.
+> Three Variable Groups are created by the script - the `{resourcePrefix}-env-vars` Variable Group is used to hold "default" or "shared" values applicable to all target environments, and the `{resourcePrefix}-env-vars-{environment}` Variable Groups hold environment-specific Variables or can override Variables with the same name in the "default" Variable Group.
 
 #### Create the pipeline
 
-The Pipeline will provision your infrastructure in Azure, and build and deploy your application to that infrastructure.
+The Pipeline will provision your infrastructure in Azure, and build and deploy your application to that infrastructure. You will set this up manually because you need to be able to authorise the Pipeline to connect to your project's repository.
 
 To create the Pipeline:
 
 * Go to Pipelines > Pipelines, and create a Pipeline
 * Choose the relevant option for where your repo is located (e.g. GitHub), and authorise as requested
-* Once authorised, select your repository and authorise as requested here also
+* Once authorised, select your repository and authorise as requested here also if prompted
 * Select `Existing Azure Pipelines YAML file` to configure your pipeline
 * Select the branch and path to your `.azure/azure-pipelines.yml` file, and continue
 * Save the Pipeline (i.e. don't Run the Pipeline yet - you will need to use the dropdown next to the "Run" button)
