@@ -41,7 +41,7 @@ There is some initial setup required in Azure that can be achieved by running a 
 The script creates:
 
 * Resource Groups in Azure into which the resources required for your app will be deployed
-* Service Connections and Variable Groups in Azure DevOps that will be used by the Pipeline
+* Service Connections, Environments and Variable Groups in Azure DevOps that will be used by the Pipeline
 
 It is assumed that you already have:
 
@@ -78,27 +78,6 @@ To use the initialisation script:
 > The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
 
 > The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
-
-#### Create Environments in Azure DevOps
-
-Environments will be used to track deployments in Azure DevOps and to allow for approvals and checks to be put in place (if desired).
-
-To create the Environments:
-
-* Go to Pipelines > Environments, and create a New environment
-  * Name it `preview`
-  * Give it a description if you want to
-  * Leave all other settings as their defaults, and click Create
-* Repeat the above to create another environment named `prod` (production)
-* Edit the `prod` environment
-  * Click More actions > Approvals and checks
-  * Click Add
-    * Select Approvals, click Next
-    * Add Approvers e.g. yourself
-    * Set other options as you want
-    * Click Create
-
-> Approvals and checks is optional, but useful if you want to check the output of the "build" Pipeline stages before proceeding with the "deploy" stages - outputs from the build stages are available as Pipeline artifacts that can be downloaded and inspected before making a decision to proceed with the deploy stages. You may want to consider putting Approvals and checks on your `preview` environment also, even if just for the first few runs, as it will give you an opportunity to make sure the pipeline is doing what you expect.
 
 #### Create Variable Groups in Azure DevOps
 
@@ -248,6 +227,23 @@ Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-th
   * `next-app-env-vars-prod`
     * `WebAppSwapSlotName` = `prodswap` (or feel free to name it what you like!)
 
+#### Add Approvals and Checks to an Environment
+
+Environments are used to track deployments in Azure DevOps and to allow for Approvals and Checks to be put in place (if desired), which requires one or more reviewers to Approve or Reject a deployment before it can run the deployment. An email notification is sent to all reviewers when there is a deployment to review.
+
+To add Approvals and Checks to an Environment:
+
+* Go to Pipelines > Environments
+* Edit the Environment you want to add Approvals and Checks to
+  * Click More actions > Approvals and checks
+  * Click Add
+    * Select Approvals, click Next
+    * Add Approvers e.g. yourself
+    * Set other options as you want
+    * Click Create
+
+> Approvals and checks is optional, but useful if you want to check the output of the "build" Pipeline stages before proceeding with the "deploy" stages - outputs from the build stages are available as Pipeline artifacts that can be downloaded and inspected before making a decision to proceed with the deploy stages.
+
 ### Add custom domain name and SSL
 
 Azure App Services come with a default `{app-service-name}.azurewebsites.net` domain and SSL included. This is great for getting started, but you will more than likely want to add your own domain to your app with SSL when it's time to go to production (though custom domains and SSL are equally supported on deployment slots also).
@@ -345,7 +341,7 @@ If you are working on a project where there could be multiple pull requests open
 
 This is not an ideal situation to be in - a unique deployment for each PR would be preferred, but is not currently supported. Instead you have a few options:
 
-* Put Approvals and checks on the `preview` [Environment](#create-environments-in-azure-devops) in Azure DevOps
+* Put Approvals and checks on the `preview` [Environment](#add-approvals-and-checks-to-an-environment) in Azure DevOps
   * This would allow you to "gate" Pipeline runs branch by branch
   * If you are still reviewing a deployment to the `preview` environment from one branch you can keep other deployments from other branches in the "waiting for approval" state until you are ready to Approve and review them
   * If you introduced a CI stage to the Pipeline (for running unit tests for example) then you could have this stage run prior to Approvals and checks so you are not waiting to Approve and review a deployment that will ultimately fail anyway
