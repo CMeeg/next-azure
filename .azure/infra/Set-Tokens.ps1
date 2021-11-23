@@ -73,8 +73,6 @@ function Set-Tokens {
         ($line | Select-String -Pattern "$($StartTokenPattern).+?$($EndTokenPattern)" -AllMatches).Matches.Count
     }
 
-    Write-Verbose "Hi"
-
     # If the OutputFile is null, we will write to a temporary file
     if ([string]::IsNullOrWhiteSpace($OutputFile)) {
         Write-Verbose "OutputFile was omitted. Replacing InputFile."

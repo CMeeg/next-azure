@@ -1,6 +1,8 @@
 $NextAzureConfigFileName = '.nextazure.json'
+$AzDevOpsApiVersion = '6.0-preview'
 
 function Get-NextAzureConfig {
+    [CmdletBinding()]
     param(
         [string]$Path
     )
@@ -8,12 +10,18 @@ function Get-NextAzureConfig {
     $ConfigPath = $Path ? $Path : (Get-NextAzureConfigPath -ConfigDir $MyInvocation.PSScriptRoot)
 
     if (!$ConfigPath) {
-        return
+        Write-Verbose "Could not find '$NextAzureConfigFileName' config file in project"
+
+        return $null
     }
 
     if (Test-Path -Path $ConfigPath -PathType Leaf) {
+        Write-Verbose "Reading config file '$ConfigPath'"
+
         return Get-Content -Path $ConfigPath | ConvertFrom-JSON
     }
+
+    Throw "Could not read config file '$ConfigPath'"
 }
 
 function Get-NextAzureConfigPath {
@@ -22,6 +30,8 @@ function Get-NextAzureConfigPath {
     )
 
     $ConfigPath = Join-Path $ConfigDir $NextAzureConfigFileName
+
+    Write-Verbose "Searching for '$NextAzureConfigFileName' config file in '$ConfigPath'"
 
     if (Test-Path -Path $ConfigPath -PathType Leaf) {
         return $ConfigPath
@@ -33,7 +43,7 @@ function Get-NextAzureConfigPath {
     $NextConfigPath = Join-Path $ConfigDir $NextConfigFileName
 
     if (Test-Path -Path $NextConfigPath -PathType Leaf) {
-        return
+        return $null
     }
 
     $ParentConfigDir = Split-Path -Path $ConfigDir -Parent
@@ -44,6 +54,7 @@ function Get-NextAzureConfigPath {
 }
 
 function Set-NextAzureConfig {
+    [CmdletBinding()]
     param(
         [hashtable]$Settings
     )
@@ -55,10 +66,14 @@ function Set-NextAzureConfig {
     if ($Config) {
         # "Merge" in each setting
 
+        Write-Information "Updating config file '$ConfigPath'"
+
         foreach ($Key in $Settings.Keys) {
+            $Setting = Get-Member -InputObject $Config -Name $Key -Membertype Properties
+
             $Value = $Settings[$Key]
 
-            if (Get-Member -InputObject $Config -Name $Key -Membertype Properties) {
+            if ($Setting) {
                 $Config.$Key = $Value
             }
             else {
@@ -69,9 +84,11 @@ function Set-NextAzureConfig {
     else {
         # Create new config from settings
 
-        $Config = [pscustomobject]$Settings
-
         $ConfigPath = Join-Path $RootPath $NextAzureConfigFileName
+
+        Write-Information "Creating config file '$ConfigPath'"
+
+        $Config = [pscustomobject]$Settings
     }
 
     # Write as json to file
@@ -82,13 +99,18 @@ function Set-NextAzureConfig {
 }
 
 function Set-AzCliDefaults {
+    [CmdletBinding()]
     param(
         $Config
     )
 
     az account set --subscription $Config.SubscriptionId
 
+    Write-Information "az account set"
+
     az devops configure --defaults organization=$($Config.OrgUrl) project=$($Config.ProjectName)
+
+    Write-Information "az devops config set"
 }
 
 function Set-NextAzureDefaults {
@@ -101,18 +123,16 @@ function Set-NextAzureDefaults {
 
     # Set Variable Group
 
+    Write-Information "--- Setting up defaults ---"
+
     Write-Information "Setting Variable Group"
 
-    $AzVariableGroup = Set-AzVariableGroup `
-    -ResourcePrefix $ResourcePrefix `
-    -Variables @{
+    $Variables = @{
         WebAppSkuName = $WebAppSkuName
         WebAppSkuCapacity = $WebAppSkuCapacity
     }
 
-    $VariableGroupName = $AzVariableGroup.name
-
-    Write-Information "Variable Group '$VariableGroupName' is set"
+    $null = Set-AzVariableGroup -ResourcePrefix $ResourcePrefix -Variables $Variables
 }
 
 function Set-NextAzureEnvironment {
@@ -123,7 +143,7 @@ function Set-NextAzureEnvironment {
         [string]$Location
     )
 
-    Write-Information "Setting up '$Environment' environment"
+    Write-Information "--- Setting up '$Environment' environment ---"
 
     # Set Resource Group
 
@@ -134,9 +154,7 @@ function Set-NextAzureEnvironment {
     -Environment $Environment `
     -Location $Location
 
-    $ResourceGroupName = $AzResourceGroup.name
-
-    Write-Information "Resource Group '$ResourceGroupName' is set"
+    Write-Line
 
     # Set Service Connection
 
@@ -148,37 +166,31 @@ function Set-NextAzureEnvironment {
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
-    $ServiceConnectionName = $AzServiceConnection.name
-
-    Write-Information "Service Connection '$ServiceConnectionName' is set"
+    Write-Line
 
     # Set Environment
 
     Write-Information "Setting Environment"
 
-    $AzEnvironment = Set-AzEnvironment `
+    $null = Set-AzEnvironment `
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
-    $EnvironmentName = $AzEnvironment.name
-
-    Write-Information "Environment '$EnvironmentName' is set"
+    Write-Line
 
     # Set Variable Group
 
     Write-Information "Setting Variable Group"
 
-    $AzVariableGroup = Set-AzVariableGroup `
-    -ResourcePrefix $ResourcePrefix `
-    -Environment $Environment `
-    -Variables @{
+    $Variables = @{
         AzureResourceGroup = $AzResourceGroup.name
         AzureServiceConnection = $AzServiceConnection.name
     }
 
-    $VariableGroupName = $AzVariableGroup.name
-
-    Write-Information "Variable Group '$VariableGroupName' is set"
+    $null = Set-AzVariableGroup `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment `
+    -Variables $Variables
 }
 
 function Get-NextAzureResourceName {
@@ -241,6 +253,8 @@ function Set-AzResourceGroup {
 
     $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment -Suffix 'rg'
 
+    Write-Information "Creating (or updating existing) Resource Group '$Name'"
+
     $ResourceGroup = (az group create --name $Name --location $Location | ConvertFrom-Json)
 
     return $ResourceGroup
@@ -254,12 +268,14 @@ function Set-AzServicePrincipal {
 
     $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment -Suffix 'sp'
 
+    Write-Information "Creating (or updating existing) Service Principal '$Name'"
+
     $ServicePrincipal = (az ad sp create-for-rbac --name $Name | ConvertFrom-Json)
 
     # We need to update the Service Prinipal to add SPN auth, but we suppress the output
     $VsSpnUrl = 'https://VisualStudio/SPN'
 
-    az ad app update --id $ServicePrincipal.appId --reply-urls $VsSpnUrl --homepage $VsSpnUrl | Out-Null
+    $null = az ad app update --id $ServicePrincipal.appId --reply-urls $VsSpnUrl --homepage $VsSpnUrl
 
     return $ServicePrincipal
 }
@@ -287,6 +303,8 @@ function Set-AzServiceConnection {
     if ($ServiceConnection) {
         # If the Service Connection already exists there is nothing more to do
 
+        Write-Information "Service Connection '$Name' already exists - no action taken"
+
         return $ServiceConnection
     }
 
@@ -309,6 +327,8 @@ function Set-AzServiceConnection {
 
     # Now we can create the Service Connection
 
+    Write-Information "Creating Service Connection '$Name'"
+
     $ServiceConnection = (az devops service-endpoint azurerm create `
     --azure-rm-service-principal-id $ServicePrincipalId `
     --azure-rm-subscription-id $SubscriptionId `
@@ -321,7 +341,10 @@ function Set-AzServiceConnection {
         $ServiceConnectionId = $ServiceConnection.id
 
         # Grant access permission to all pipelines and suppress output
-        az devops service-endpoint update --id $ServiceConnectionId --enable-for-all | Out-Null
+        $null = az devops service-endpoint update --id $ServiceConnectionId --enable-for-all
+    }
+    else {
+        Write-Error "Service Connection could not be created"
     }
 
     return $ServiceConnection
@@ -342,7 +365,7 @@ function Get-AzEnvironment {
     --route-parameters "project=$Project" `
     --org $Organization `
     --query "value[?name=='$Name'] | [0]" `
-    --api-version '6.0-preview' `
+    --api-version $AzDevOpsApiVersion `
     --output json `
     | ConvertFrom-Json)
 
@@ -367,10 +390,14 @@ function Set-AzEnvironment {
     if ($AzEnvironment) {
         # If the Environment already exists there is nothing more to do
 
+        Write-Information "Environment '$Name' already exists - no action taken"
+
         return $AzEnvironment
     }
 
     # Create the Environment
+
+    Write-Information "Creating Environment '$Name'"
 
     # This `invoke` request requires that we send json via the `--in-file` param so we will create a temporary file
     $RequestPayload = @{
@@ -384,16 +411,14 @@ function Set-AzEnvironment {
 
     Set-Content -Path $RequestPayloadPath -Value ($RequestPayload | ConvertTo-Json)
 
-    az devops invoke `
+    $null = az devops invoke `
     --area distributedtask `
     --resource environments `
     --route-parameters "project=$Project" `
     --org $Organization `
     --http-method POST `
     --in-file $RequestPayloadPath `
-    --api-version '6.0-preview' `
-    --output json `
-    | Out-Null
+    --api-version $AzDevOpsApiVersion
 
     # Remove the temp payload file
     Remove-Item $RequestPayloadPath -Force
@@ -417,7 +442,7 @@ function Get-AzVariableGroup {
     }
 
     $VariableGroup = (az pipelines variable-group list `
-    --query "[?name=='$Name'] | [0]"
+    --query "[?name=='$Name'] | [0]" `
     | ConvertFrom-Json)
 
     return $VariableGroup
@@ -435,10 +460,18 @@ function Set-AzVariableGroup {
     $VariableGroup = Get-AzVariableGroup -Name $Name
 
     if ($VariableGroup) {
+        # Update the Variable Group
+
+        Write-Information "Updating Variable Group '$Name'"
+
         $VariableGroup = Set-AzVariableGroupVariables -VariableGroupId $($VariableGroup.id) -Variables $Variables
 
         return $VariableGroup
     }
+
+    # Create the Variable Group
+
+    Write-Information "Creating Variable Group '$Name'"
 
     $VariablesArgs = @()
     foreach($Key in $Variables.Keys)
@@ -449,7 +482,7 @@ function Set-AzVariableGroup {
     $VariableGroup = (az pipelines variable-group create `
     --name $Name `
     --authorize `
-    --variables $VariablesArgs
+    --variables $VariablesArgs `
     | ConvertFrom-Json)
 
     return $VariableGroup
@@ -461,8 +494,23 @@ function Set-AzVariableGroupVariables {
         [hashtable]$Variables
     )
 
+    $GroupVariables = (az pipelines variable-group variable list --group-id $VariableGroupId | ConvertFrom-Json)
+
     foreach($Key in $Variables.Keys) {
-        Set-AzVariableGroupVariable -VariableGroupId $VariableGroupId -Name $Key -Value $Variables[$Key]
+        $GroupVariable = Get-Member -InputObject $GroupVariables -Name $Key -Membertype Properties
+
+        $Value = $Variables[$Key]
+
+        if ($GroupVariable) {
+            Write-Verbose "Updating Variable '$Key'"
+
+            $null = Set-AzVariableGroupVariable -VariableGroupId $VariableGroupId -Name $Key -Value $Value
+        }
+        else {
+            Write-Verbose "Creating Variable '$Key'"
+
+            $null = New-AzVariableGroupVariable -VariableGroupId $VariableGroupId -Name $Key -Value $Value
+        }
     }
 
     $VariableGroup = Get-AzVariableGroup -Id $VariableGroupId
@@ -470,28 +518,12 @@ function Set-AzVariableGroupVariables {
     return $VariableGroup
 }
 
-function Set-AzVariableGroupVariable {
+function New-AzVariableGroupVariable {
     param(
         [int]$VariableGroupId,
         [string]$Name,
         [string]$Value
     )
-
-    $Variable = (az pipelines variable-group variable list --group-id $VariableGroupId | ConvertFrom-Json)
-
-    if (Get-Member -InputObject $Variable -Name $Name -Membertype Properties) {
-        # Variable already exists - update
-
-        $Variable = (az pipelines variable-group variable update `
-        --group-id $VariableGroupId `
-        --name $Name `
-        --value $Value `
-        | ConvertFrom-Json)
-
-        return $Variable
-    }
-
-    # Variable does not exist - create
 
     $Variable = (az pipelines variable-group variable create `
     --group-id $VariableGroupId `
@@ -502,8 +534,32 @@ function Set-AzVariableGroupVariable {
     return $Variable
 }
 
+function Set-AzVariableGroupVariable {
+    param(
+        [int]$VariableGroupId,
+        [string]$Name,
+        [string]$Value
+    )
+
+    $Variable = (az pipelines variable-group variable update `
+    --group-id $VariableGroupId `
+    --name $Name `
+    --value $Value `
+    | ConvertFrom-Json)
+
+    return $Variable
+}
+
+function Write-Line {
+    [CmdletBinding()]
+    param()
+
+    Write-Information ''
+}
+
 Export-ModuleMember -Function Get-NextAzureConfig
 Export-ModuleMember -Function Set-NextAzureConfig
 Export-ModuleMember -Function Set-AzCliDefaults
 Export-ModuleMember -Function Set-NextAzureDefaults
 Export-ModuleMember -Function Set-NextAzureEnvironment
+Export-ModuleMember -Function Write-Line
