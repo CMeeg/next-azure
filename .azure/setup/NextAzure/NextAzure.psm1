@@ -116,7 +116,7 @@ function Set-AzCliDefaults {
 function Set-NextAzureDefaults {
     [CmdletBinding()]
     param(
-        [string]$ResourcePrefix,
+        $Config,
         [string]$WebAppSkuName,
         [int]$WebAppSkuCapacity
     )
@@ -132,15 +132,14 @@ function Set-NextAzureDefaults {
         WebAppSkuCapacity = $WebAppSkuCapacity
     }
 
-    $null = Set-AzVariableGroup -ResourcePrefix $ResourcePrefix -Variables $Variables
+    $null = Set-AzVariableGroup -ResourcePrefix $($Config.ResourcePrefix) -Variables $Variables
 }
 
 function Set-NextAzureEnvironment {
     [CmdletBinding()]
     param(
-        [string]$ResourcePrefix,
-        [string]$Environment,
-        [string]$Location
+        $Config,
+        [string]$Environment
     )
 
     Write-Information "--- Setting up '$Environment' environment ---"
@@ -150,9 +149,9 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Resource Group"
 
     $AzResourceGroup = Set-AzResourceGroup `
-    -ResourcePrefix $ResourcePrefix `
+    -ResourcePrefix $($Config.ResourcePrefix) `
     -Environment $Environment `
-    -Location $Location
+    -Location $($Config.Location)
 
     Write-Line
 
@@ -163,7 +162,7 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Service Connection"
 
     $AzServiceConnection = Set-AzServiceConnection `
-    -ResourcePrefix $ResourcePrefix `
+    -ResourcePrefix $($Config.ResourcePrefix) `
     -Environment $Environment
 
     Write-Line
@@ -173,8 +172,10 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Environment"
 
     $null = Set-AzEnvironment `
-    -ResourcePrefix $ResourcePrefix `
-    -Environment $Environment
+    -ResourcePrefix $($Config.ResourcePrefix) `
+    -Environment $Environment `
+    -OrgUrl $($Config.OrgUrl) `
+    -ProjectName $($Config.ProjectName)
 
     Write-Line
 
@@ -188,7 +189,7 @@ function Set-NextAzureEnvironment {
     }
 
     $null = Set-AzVariableGroup `
-    -ResourcePrefix $ResourcePrefix `
+    -ResourcePrefix $($Config.ResourcePrefix) `
     -Environment $Environment `
     -Variables $Variables
 }
@@ -218,30 +219,6 @@ function Get-CurrentAzSubscription {
     $Subscription = (az account show | ConvertFrom-Json)
 
     return $Subscription
-}
-
-function Get-CurrentAzDevOpsConfig {
-    $RawConfig = (az devops configure --list | Out-String)
-
-    $ProjectResult = Select-String -Pattern "(?m)^project = (.+)$" -InputObject $RawConfig
-    $OrganizationResult = Select-String -Pattern "(?m)^organization = (.+)$" -InputObject $RawConfig
-
-    $Project = ""
-    if ($ProjectResult.Matches.Groups.Count -gt 0) {
-        $Project = $ProjectResult.Matches.Groups[1].Value
-    }
-
-    $Organization = ""
-    if ($OrganizationResult.Matches.Groups.Count -gt 0) {
-        $Organization = $OrganizationResult.Matches.Groups[1].Value
-    }
-
-    $Config = [PSCustomObject]@{
-        Project = $Project
-        Organization = $Organization
-    }
-
-    return $Config
 }
 
 function Set-AzResourceGroup {
@@ -375,17 +352,16 @@ function Get-AzEnvironment {
 function Set-AzEnvironment {
     param(
         [string]$ResourcePrefix,
-        [string]$Environment
+        [string]$Environment,
+        [string]$OrgUrl,
+        [string]$ProjectName
     )
 
     $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment
 
-    # There is no `environment` subcommand so we have to use `invoke`, but the invoke command doesn't pick up the default config values so we need to get it by reading the config ourselves
-    $Config = Get-CurrentAzDevOpsConfig
-    $Project = $Config.Project
-    $Organization = $Config.Organization
+    # There is no `environment` subcommand so we have to use `invoke`
 
-    $AzEnvironment = Get-AzEnvironment -Name $Name -Project $Project -Organization $Organization
+    $AzEnvironment = Get-AzEnvironment -Name $Name -Project $ProjectName -Organization $OrgUrl
 
     if ($AzEnvironment) {
         # If the Environment already exists there is nothing more to do
@@ -414,8 +390,8 @@ function Set-AzEnvironment {
     $null = az devops invoke `
     --area distributedtask `
     --resource environments `
-    --route-parameters "project=$Project" `
-    --org $Organization `
+    --route-parameters "project=$ProjectName" `
+    --org $OrgUrl `
     --http-method POST `
     --in-file $RequestPayloadPath `
     --api-version $AzDevOpsApiVersion
@@ -424,7 +400,7 @@ function Set-AzEnvironment {
     Remove-Item $RequestPayloadPath -Force
 
     # The command to create the Environment doesn't return a useful response so we will fetch it and return
-    $AzEnvironment = Get-AzEnvironment -Name $Name -Project $Project -Organization $Organization
+    $AzEnvironment = Get-AzEnvironment -Name $Name -Project $ProjectName -Organization $OrgUrl
 
     return $AzEnvironment
 }

@@ -94,17 +94,17 @@ Write-Line -InformationAction Continue
 
 # Init defaults
 
-Set-NextAzureDefaults -ResourcePrefix $ResourcePrefix -WebAppSkuName 'F1' -WebAppSkuCapacity 1 -InformationAction Continue
+Set-NextAzureDefaults -Config $Config -WebAppSkuName 'F1' -WebAppSkuCapacity 1 -InformationAction Continue
 
 Write-Line -InformationAction Continue
 
 # Init environments
 
-Set-NextAzureEnvironment -ResourcePrefix $ResourcePrefix -Environment 'preview' -Location $Location -InformationAction Continue
+Set-NextAzureEnvironment -Config $Config -Environment 'preview' -InformationAction Continue
 
 Write-Line -InformationAction Continue
 
-Set-NextAzureEnvironment -ResourcePrefix $ResourcePrefix -Environment 'prod' -Location $Location -InformationAction Continue
+Set-NextAzureEnvironment -Config $Config -Environment 'prod' -InformationAction Continue
 
 Write-Line -InformationAction Continue
 
