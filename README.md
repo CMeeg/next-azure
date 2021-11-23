@@ -66,16 +66,19 @@ To use the initialisation script:
 
 * Login to your Azure Account
   * `az login`
-* When you login you should see some output that shows the current active (default) subscription - this is where your Resource Groups will be created when you run the script
-  * [Switch Subscription](https://docs.microsoft.com/en-us/cli/azure/manage-azure-subscriptions-azure-cli#change-the-active-subscription) if this is not where you want to deploy your Azure resources
-* Set the Azure DevOps Project where your Pipeline will be created
-  * `az devops configure --defaults organization={organization_url} project={project_name}`
-* Run `./.azure/setup/init.ps1 -ResourcePrefix {resource_prefix} -Location {location}`
-  * `{resource_prefix}` is a string that will be used as a prefix for the Resource Groups and other resources created by the Pipeline - it can be any value you like, but it's usually a good idea to keep it short due to [resource name length limits](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules)
-  * `{location}` is the Azure Location (Region) Name where the Resource Groups should be created
-    * Run `az account list-locations --output table` to get a list of locations - it is the `Name` property that must be provided as `{location}`
+* Run the initialisation script
+  * `./.azure/setup/init.ps1 -SubscriptionId {subscription_id} -ResourcePrefix {resource_prefix} -Location {location} -OrgUrl {devops_org_url} -ProjectName {devops_project_name}`
+  * Where
+    * `{subscription_id}` is the ID (GUID) of the Azure Subscription where you want to deploy your Resource Groups and resources
+    * `{resource_prefix}` is a string that will be used as a prefix in the names of the Resource Groups and other resources created by this script and the Pipeline
+      * It can be any value you like, but it's usually a good idea to keep it short due to [resource name length limits](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules)
+    * `{location}` is the Azure Location (Region) Name where the Resource Groups should be created
+      * Run `az account list-locations --output table` to get a list of locations - it is the `Name` property that must be provided as `{location}`
+    * `{devops_org_url}` is the URL of your Azure DevOps Organization
+    * `{devops_project_name}` is the name of your Azure DevOps Project where the Pipeline, Environments and Variable Groups will be created
+* The script will also create a config file named `.nextazure.json` - please remember to commit this to your repo as it is used by other scripts described in the [Usage](#usage) section
 
-> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs - search for `Get-NextAzureResourceName`. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
+> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs - search for the `Get-NextAzureResourceName` function. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
 
 > The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
 

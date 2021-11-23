@@ -1,3 +1,96 @@
+$NextAzureConfigFileName = '.nextazure.json'
+
+function Get-NextAzureConfig {
+    param(
+        [string]$Path
+    )
+
+    $ConfigPath = $Path ? $Path : (Get-NextAzureConfigPath -ConfigDir $MyInvocation.PSScriptRoot)
+
+    if (!$ConfigPath) {
+        return
+    }
+
+    if (Test-Path -Path $ConfigPath -PathType Leaf) {
+        return Get-Content -Path $ConfigPath | ConvertFrom-JSON
+    }
+}
+
+function Get-NextAzureConfigPath {
+    param(
+        [string]$ConfigDir
+    )
+
+    $ConfigPath = Join-Path $ConfigDir $NextAzureConfigFileName
+
+    if (Test-Path -Path $ConfigPath -PathType Leaf) {
+        return $ConfigPath
+    }
+
+    # `next.config.js` is at the root of a Next.js project so if we have reached that and still not found our config file then there is no need to go further - assume it doesn't exist
+
+    $NextConfigFileName = 'next.config.js'
+    $NextConfigPath = Join-Path $ConfigDir $NextConfigFileName
+
+    if (Test-Path -Path $NextConfigPath -PathType Leaf) {
+        return
+    }
+
+    $ParentConfigDir = Split-Path -Path $ConfigDir -Parent
+
+    if ($ParentConfigDir) {
+        return Get-NextAzureConfigPath -ConfigDir $ParentConfigDir
+    }
+}
+
+function Set-NextAzureConfig {
+    param(
+        [hashtable]$Settings
+    )
+
+    $RootPath = $MyInvocation.PSScriptRoot
+    $ConfigPath = Get-NextAzureConfigPath -ConfigDir $RootPath
+    $Config = Get-NextAzureConfig -Path $ConfigPath
+
+    if ($Config) {
+        # "Merge" in each setting
+
+        foreach ($Key in $Settings.Keys) {
+            $Value = $Settings[$Key]
+
+            if (Get-Member -InputObject $Config -Name $Key -Membertype Properties) {
+                $Config.$Key = $Value
+            }
+            else {
+                $Config | Add-Member -MemberType NoteProperty -Name $Key -Value $Value
+            }
+        }
+    }
+    else {
+        # Create new config from settings
+
+        $Config = [pscustomobject]$Settings
+
+        $ConfigPath = Join-Path $RootPath $NextAzureConfigFileName
+    }
+
+    # Write as json to file
+
+    $Config | ConvertTo-Json -depth 1 | Set-Content -Path $ConfigPath
+
+    return $Config
+}
+
+function Set-AzCliDefaults {
+    param(
+        $Config
+    )
+
+    az account set --subscription $Config.SubscriptionId
+
+    az devops configure --defaults organization=$($Config.OrgUrl) project=$($Config.ProjectName)
+}
+
 function Set-NextAzureDefaults {
     [CmdletBinding()]
     param(
@@ -409,5 +502,8 @@ function Set-AzVariableGroupVariable {
     return $Variable
 }
 
+Export-ModuleMember -Function Get-NextAzureConfig
+Export-ModuleMember -Function Set-NextAzureConfig
+Export-ModuleMember -Function Set-AzCliDefaults
 Export-ModuleMember -Function Set-NextAzureDefaults
 Export-ModuleMember -Function Set-NextAzureEnvironment
