@@ -510,11 +510,21 @@ function New-AzVariableGroupVariable {
         [string]$Value
     )
 
-    $Variable = (az pipelines variable-group variable create `
-    --group-id $VariableGroupId `
-    --name $Name `
-    --value $Value `
-    | ConvertFrom-Json)
+    $Variable = $null
+
+    if ($Value) {
+        $Variable = (az pipelines variable-group variable create `
+        --group-id $VariableGroupId `
+        --name $Name `
+        --value $Value `
+        | ConvertFrom-Json)
+    }
+    else {
+        $Variable = (az pipelines variable-group variable create `
+        --group-id $VariableGroupId `
+        --name $Name `
+        | ConvertFrom-Json)
+    }
 
     return $Variable
 }
@@ -526,11 +536,21 @@ function Set-AzVariableGroupVariable {
         [string]$Value
     )
 
-    $Variable = (az pipelines variable-group variable update `
-    --group-id $VariableGroupId `
-    --name $Name `
-    --value $Value `
-    | ConvertFrom-Json)
+    $Variable = $null
+
+    if ($Value) {
+        $Variable = (az pipelines variable-group variable update `
+        --group-id $VariableGroupId `
+        --name $Name `
+        --value $Value `
+        | ConvertFrom-Json)
+    }
+    else {
+        $Variable = (az pipelines variable-group variable update `
+        --group-id $VariableGroupId `
+        --name $Name `
+        | ConvertFrom-Json)
+    }
 
     return $Variable
 }
