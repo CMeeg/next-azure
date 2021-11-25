@@ -171,7 +171,7 @@ function Set-NextAzureEnvironment {
 
     Write-Information "Setting Environment"
 
-    $null = Set-AzEnvironment `
+    $AzEnvironment = Set-AzEnvironment `
     -ResourcePrefix $($Config.ResourcePrefix) `
     -Environment $Environment `
     -OrgUrl $($Config.OrgUrl) `
@@ -184,8 +184,10 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Variable Group"
 
     $Variables = @{
+        EnvironmentName = $Environment
         AzureResourceGroup = $AzResourceGroup.name
         AzureServiceConnection = $AzServiceConnection.name
+        AzureEnvironment = $AzEnvironment.name
     }
 
     $null = Set-AzVariableGroup `
