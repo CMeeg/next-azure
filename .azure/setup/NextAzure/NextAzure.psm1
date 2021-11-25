@@ -185,9 +185,13 @@ function Set-NextAzureEnvironment {
 
     $Variables = @{
         EnvironmentName = $Environment
+        AzureEnvironment = $AzEnvironment.name
         AzureResourceGroup = $AzResourceGroup.name
         AzureServiceConnection = $AzServiceConnection.name
-        AzureEnvironment = $AzEnvironment.name
+        WebAppCertName = ''
+        WebAppDomainName = ''
+        WebAppSlotName = ''
+        WebAppSwapSlotName = ''
     }
 
     $null = Set-AzVariableGroup `
