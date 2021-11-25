@@ -127,12 +127,15 @@ function Set-NextAzureDefaults {
 
     Write-Information "Setting Variable Group"
 
+    $ResourcePrefix = $($Config.ResourcePrefix)
+
     $Variables = @{
+        AzureResourcePrefix = $ResourcePrefix
         WebAppSkuName = $WebAppSkuName
         WebAppSkuCapacity = $WebAppSkuCapacity
     }
 
-    $null = Set-AzVariableGroup -ResourcePrefix $($Config.ResourcePrefix) -Variables $Variables
+    $null = Set-AzVariableGroup -ResourcePrefix $ResourcePrefix -Variables $Variables
 }
 
 function Set-NextAzureEnvironment {

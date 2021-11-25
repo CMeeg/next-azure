@@ -70,8 +70,6 @@ To use the initialisation script:
   * `./.azure/setup/init.ps1 -SubscriptionId {subscription_id} -ResourcePrefix {resource_prefix} -Location {location} -OrgUrl {devops_org_url} -ProjectName {devops_project_name}`
     * To see a full description of the script and its parameters, run `Get-Help .azure/setup/init.ps1 -Full`
 
-The script will create a config file named `.nextazure.json` - please commit this to your repo as it is used by other scripts described in the [Usage](#usage) section and ensures scripts run after this point use the same options provided during initialisation.
-
 > The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs - search for the `Get-NextAzureResourceName` function. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
 
 > The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
@@ -95,14 +93,9 @@ To create the Pipeline:
 
 The Pipeline is now ready to run. It can be triggered by pushing commits to your repository.
 
-Edit `.azure/infra/main.parameters.json.template`:
+The [Initialisation script](#run-the-azure-initialisation-script) creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation - please commit this to your repo and push your changes.
 
-* Change the `value` of the `projectName` parameter
-  * It is used in the names of the Azure resources created by the Pipeline so should be named [appropriately](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules)
-  * Alphanumeric and hyphens are generally safe, and safe for the resources used by this template
-* Commit and push your changes
-
-> By default the pipeline will deploy your app into separate "Free tier" App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-the-preview-environment), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
+> By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-the-preview-environment), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
 
 Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment.
 
@@ -258,7 +251,7 @@ There are a few ways to add an SSL certificate to an App Service, but the method
 To create a Key Vault and add your SSL certificate to it, please follow the [Import a certificate in Azure Key Vault](https://docs.microsoft.com/en-us/azure/key-vault/certificates/tutorial-import-certificate) tutorial, but make sure that:
 
 * The Key Vault is created in the Resource Group related to the target environment you will be adding the custom domain to
-* The Key Vault is named `{projectName}-{environment}-kv` (though you can [change this naming convention](#change-the-resource-naming-conventions))
+* The Key Vault is named `{resourcePrefix}-{environment}-kv` (though you can [change this naming convention](#change-the-resource-naming-conventions))
 
 Once you have your Key Vault and SSL certificate in place, you will need to add an Access Policy to allow the App Service to get the certificate from the Key Vault:
 
@@ -349,11 +342,11 @@ To add an additional target environment you should:
 
 The default resource naming convention used in the Bicep scripts is:
 
-`{projectName}-{environment}-{resourceSuffix}`
+`{resourcePrefix}-{environment}-{resourceSuffix}`
 
 Where:
 
-* `projectName` is the value set in the `main.parameters.json.template` file
+* `resourcePrefix` is the value set in the `main.parameters.json.template` file
 * `environment` is the `TargetEnv` variable set in `azure-pipelines.yml`
   * This isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-the-preview-environment)
 * `resourceSuffix` is hardcoded inside the Bicep files and is usually a two to three character string representing the type of resource e.g. `app` for App Service, `cdn` for CDN endpoint

@@ -1,6 +1,6 @@
 param location string = resourceGroup().location
 
-param projectName string
+param resourcePrefix string
 
 param environment string
 
@@ -47,8 +47,8 @@ param webAppSettings object
 // Create resource name prefixes for "shared" and "environment" resources
 
 var envResourceGroupName = resourceGroup().name
-var envResourceNamePrefix = toLower('${projectName}-${environment}')
-var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${projectName}')
+var envResourceNamePrefix = toLower('${resourcePrefix}-${environment}')
+var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ? envResourceNamePrefix : toLower('${resourcePrefix}')
 
 // Define the app service resources
 
