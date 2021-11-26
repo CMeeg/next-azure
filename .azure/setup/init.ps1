@@ -4,7 +4,7 @@
 Initialises a new next-azure project.
 
 .DESCRIPTION
-Creates default Resource Groups, Service Principals, Service Connections, Environments and Variale Groups in Azure and Azure DevOps required for by the next-azure deployment Pipeline.
+Creates default Resource Groups, Service Principals, Service Connections, Environments and Variable Groups in Azure and Azure DevOps required for by the next-azure deployment Pipeline.
 
 .PARAMETER SubscriptionId
 The ID (GUID) of the Subscription where Azure Resource Groups and resources should be created.
@@ -84,7 +84,7 @@ $ConfigSettings = @{
     ProjectName = $ProjectName
 }
 
-$Config = Set-NextAzureConfig -Settings $ConfigSettings -InformationAction Continue
+$Config = Set-NextAzureConfig -Config $Config -Settings $ConfigSettings -InformationAction Continue
 
 # Configure Azure CLI default options from config
 
@@ -108,6 +108,6 @@ Set-NextAzureEnvironment -Config $Config -Environment 'prod' -InformationAction 
 
 Write-Line -InformationAction Continue
 
-Write-Information "`u{2714}`u{FE0F}  Done"
+Write-Information "`u{2714}`u{FE0F} Done"
 
 $InformationPreference = $OriginalInformationPreference

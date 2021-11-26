@@ -138,52 +138,12 @@ By default, the Pipeline will deploy your app to a separate App Service per targ
 
 Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is an opt-in feature as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots) because there is a cost involved.
 
-> The Pipeline deploys to one slot per environment, and supports [auto swap](#configure-auto-swap-for-the-production-environment).
+> The Pipeline also supports [auto swap](#configure-auto-swap-for-the-production-environment) of deployment slots.
 
-Assuming you have followed the [Getting started](#getting-started) guide and the Pipeline has been or is ready to run, you can modify your setup in the following ways to use deployment slots:
+Assuming you have already run the [initialisation script](#run-the-azure-initialisation-script) you can run the following script to setup deployment slots in your Pipeline:
 
-#### Create a Resource Group for "shared" resources
-
-When using deployment slots the App Service is "shared" between more than one environment so a new Resource Group will be used to deploy the App Service to rather than deploying it to an existing "environment" Resource Group.
-
-To create the Resource Group:
-
-* Select the Subscription in the [Azure Portal](https://portal.azure.com/) where you will deploy your app
-* Create a Resource Group for "shared" environment resources e.g. `next-azure-rg`
-
-#### Allow your Service Connections to deploy to the "shared" Resource Group
-
-The Service Connections used by the Pipeline to deploy to your environment-specific Resource Groups need permission to deploy to your "shared" Resource Group. Unfortunately you cannot modify the Service Connections directly to add these, but you can assign the Contributor role to your Service Connections on the "shared" Resource Group.
-
-To assign the Contributor role for your Service Connections:
-
-* Choose to edit any of your project's Service Connections in Azure DevOps
-  * From the Overview tab, click on `Manage Service Principal`
-  * Copy the `Display name` of the service principal
-* Navigate to your "shared" Resource Group in the Azure Portal
-  * Click on Access Control (IAM) > Role Assignments
-  * Click Add > Add role assignment
-    * Choose the Contributor role, click Next
-    * Choose Assign access to User, group, or service principal, click Select members
-    * Paste the `Display name` of the service principal you copied earlier
-    * Select all of the matches
-    * Add a description if you wish
-    * Review + assign your changes
-
-#### Update Variable Groups
-
-You will need to update the Variable Groups with Variables so that the Pipeline knows the name of the "shared" Resource Group and the name of the deployment slot for each target environment.
-
-To update the Variable Groups:
-
-* Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Groups (or equivalents if you have renamed them):
-  * `next-app-env-vars`
-    * `WebAppSkuName` = {`B1` is the minimum Dev/Test SKU, and `S1` is the minimum Production SKU}
-    * `AzureSharedResourceGroup` = {Name of your "shared" Resource Group}
-  * `next-app-env-vars-preview`
-    * `WebAppSlotName` = `preview`
-  * `next-app-env-vars-prod`
-    * `WebAppSlotName` = `production`
+* ` ./.azure/setup/use-slots.ps1`
+  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/use-slots.ps1 -Full`
 
 ### Configure auto swap for the production environment
 

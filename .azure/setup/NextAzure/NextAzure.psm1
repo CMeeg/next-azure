@@ -7,18 +7,31 @@ function Get-NextAzureConfig {
         [string]$Path
     )
 
+    if ($Path) {
+        $ConfigFileName = Split-Path -Path $Path -Leaf
+
+        if ($ConfigFileName -ne $NextAzureConfigFileName) {
+            Throw "Config path '$Path' must be to a '$NextAzureConfigFileName' file"
+        }
+    }
+
     $ConfigPath = $Path ? $Path : (Get-NextAzureConfigPath -ConfigDir $MyInvocation.PSScriptRoot)
 
     if (!$ConfigPath) {
-        Write-Verbose "Could not find '$NextAzureConfigFileName' config file in project"
+        Write-Information "Could not find '$NextAzureConfigFileName' config file in project"
 
         return $null
     }
 
     if (Test-Path -Path $ConfigPath -PathType Leaf) {
-        Write-Verbose "Reading config file '$ConfigPath'"
+        Write-Information "Loading config file '$ConfigPath'"
 
-        return Get-Content -Path $ConfigPath | ConvertFrom-JSON
+        $Settings = Get-Content -Path $ConfigPath | ConvertFrom-JSON
+
+        return @{
+            Settings = $Settings
+            Path = $ConfigPath
+        }
     }
 
     Throw "Could not read config file '$ConfigPath'"
@@ -56,46 +69,62 @@ function Get-NextAzureConfigPath {
 function Set-NextAzureConfig {
     [CmdletBinding()]
     param(
+        $Config,
         [hashtable]$Settings
     )
 
-    $RootPath = $MyInvocation.PSScriptRoot
-    $ConfigPath = Get-NextAzureConfigPath -ConfigDir $RootPath
-    $Config = Get-NextAzureConfig -Path $ConfigPath
+    $ConfigPath = $null
+    $ConfigSettings = $null
 
     if ($Config) {
+        # Check config path is valid
+
+        $ConfigPath = $Config.Path
+        $ConfigFileName = Split-Path -Path $ConfigPath -Leaf
+
+        if ($ConfigFileName -ne $NextAzureConfigFileName) {
+            Throw "Config path '$ConfigPath' must be to a '$NextAzureConfigFileName' file"
+        }
+
         # "Merge" in each setting
 
         Write-Information "Updating config file '$ConfigPath'"
 
+        $ConfigSettings = $Config.Settings
+
         foreach ($Key in $Settings.Keys) {
-            $Setting = Get-Member -InputObject $Config -Name $Key -Membertype Properties
+            $ConfigSetting = $ConfigSettings.$Key
 
             $Value = $Settings[$Key]
 
-            if ($Setting) {
-                $Config.$Key = $Value
+            if ($ConfigSetting) {
+                $ConfigSettings.$Key = $Value
             }
             else {
-                $Config | Add-Member -MemberType NoteProperty -Name $Key -Value $Value
+                $ConfigSettings | Add-Member -MemberType NoteProperty -Name $Key -Value $Value
             }
         }
     }
     else {
         # Create new config from settings
 
-        $ConfigPath = Join-Path $RootPath $NextAzureConfigFileName
+        $ConfigPath = Join-Path $MyInvocation.PSScriptRoot $NextAzureConfigFileName
 
         Write-Information "Creating config file '$ConfigPath'"
 
-        $Config = [pscustomobject]$Settings
+        $ConfigSettings = [pscustomobject]$Settings
     }
 
-    # Write as json to file
+    # Write settings as json to path
 
-    $Config | ConvertTo-Json -depth 1 | Set-Content -Path $ConfigPath
+    $ConfigSettings | ConvertTo-Json -depth 1 | Set-Content -Path $ConfigPath
 
-    return $Config
+    # Return the new or updated settings
+
+    return @{
+        Settings = $ConfigSettings
+        Path = $ConfigPath
+    }
 }
 
 function Set-AzCliDefaults {
@@ -104,11 +133,11 @@ function Set-AzCliDefaults {
         $Config
     )
 
-    az account set --subscription $Config.SubscriptionId
+    az account set --subscription $($Config.Settings.SubscriptionId)
 
     Write-Information "az account set"
 
-    az devops configure --defaults organization=$($Config.OrgUrl) project=$($Config.ProjectName)
+    az devops configure --defaults organization=$($Config.Settings.OrgUrl) project=$($Config.Settings.ProjectName)
 
     Write-Information "az devops config set"
 }
@@ -127,7 +156,7 @@ function Set-NextAzureDefaults {
 
     Write-Information "Setting Variable Group"
 
-    $ResourcePrefix = $($Config.ResourcePrefix)
+    $ResourcePrefix = $Config.Settings.ResourcePrefix
 
     $Variables = @{
         AzureResourcePrefix = $ResourcePrefix
@@ -152,21 +181,34 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Resource Group"
 
     $AzResourceGroup = Set-AzResourceGroup `
-    -ResourcePrefix $($Config.ResourcePrefix) `
+    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
     -Environment $Environment `
-    -Location $($Config.Location)
+    -Location $($Config.Settings.Location)
 
     Write-Line
 
     # Set Service Connection
 
-    # TODO: Does the Service Connection have the required access to create permissions in the relevant Resource Group?
-
     Write-Information "Setting Service Connection"
 
     $AzServiceConnection = Set-AzServiceConnection `
-    -ResourcePrefix $($Config.ResourcePrefix) `
+    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
     -Environment $Environment
+
+    Write-Line
+
+    # Give `Contributor` access to Service Connection Principal on the Resource Group
+
+    Write-Information "Setting Role Assignment on Resource Group for Service Connection"
+
+    $AzServicePrincipal = Get-AzServicePrincipal `
+    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
+    -Environment $Environment
+
+    $null = Set-AzRoleAssignment `
+    -Role 'Contributor' `
+    -Assignee $AzServicePrincipal.objectId `
+    -Scope $AzResourceGroup.id
 
     Write-Line
 
@@ -175,10 +217,10 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Environment"
 
     $AzEnvironment = Set-AzEnvironment `
-    -ResourcePrefix $($Config.ResourcePrefix) `
+    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
     -Environment $Environment `
-    -OrgUrl $($Config.OrgUrl) `
-    -ProjectName $($Config.ProjectName)
+    -OrgUrl $($Config.Settings.OrgUrl) `
+    -ProjectName $($Config.Settings.ProjectName)
 
     Write-Line
 
@@ -198,9 +240,109 @@ function Set-NextAzureEnvironment {
     }
 
     $null = Set-AzVariableGroup `
-    -ResourcePrefix $($Config.ResourcePrefix) `
+    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
     -Environment $Environment `
     -Variables $Variables
+}
+
+function Set-NextAzureUseAppServiceSlots {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        $Config,
+        [Parameter(Mandatory=$true)]
+        [string]$ProductionEnvironment,
+        [Parameter(Mandatory=$true)]
+        [string]$WebAppSkuName
+    )
+
+    $ResourcePrefix = $Config.Settings.ResourcePrefix
+
+    Write-Information "--- Setting up deployment slots ---"
+
+    Write-Information "Setting shared Resource Group"
+
+    $AzResourceGroup = Set-AzResourceGroup `
+    -ResourcePrefix $ResourcePrefix `
+    -Location $($Config.Settings.Location)
+
+    Write-Line
+
+    Write-Information "Setting default Variable Group"
+
+    $Variables = @{
+        AzureSharedResourceGroup = $AzResourceGroup.name
+        WebAppSkuName = $WebAppSkuName
+    }
+
+    $null = Set-AzVariableGroup `
+    -ResourcePrefix $ResourcePrefix `
+    -Variables $Variables
+
+    Write-Line
+
+    # Set existing environments
+
+    $Environments = Get-NextAzureEnvironments -ResourcePrefix $ResourcePrefix
+
+    foreach ($Environment in $Environments) {
+        $null = Set-NextAzureEnvironmentAppServiceSlot `
+        -ResourcePrefix $ResourcePrefix `
+        -Environment $Environment `
+        -SharedResourceGroupId $($AzResourceGroup.id)
+
+        Write-Line
+    }
+}
+
+function Set-NextAzureEnvironmentAppServiceSlot {
+    param(
+        [string]$ResourcePrefix,
+        [string]$Environment,
+        [string]$SharedResourceGroupId
+    )
+
+    Write-Information "--- Setting up '$Environment' deployment slot"
+
+    Write-Information "Setting Role Assignment on Resource Group for Service Connection"
+
+    $AzServicePrincipal = Get-AzServicePrincipal `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment
+
+    $null = Set-AzRoleAssignment `
+    -Role 'Contributor' `
+    -Assignee $AzServicePrincipal.objectId `
+    -Scope $SharedResourceGroupId
+
+    Write-Line
+
+    Write-Information "Setting Variable Group"
+
+    $WebAppSlotName = $Environment -eq $ProductionEnvironment ? 'production' : $Environment
+
+    $Variables = @{
+        WebAppSlotName = $WebAppSlotName
+        WebAppSkuName = $null
+    }
+
+    $null = Set-AzVariableGroup `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment `
+    -Variables $Variables `
+    -UpdateOnly
+}
+
+function Get-NextAzureEnvironments {
+    param(
+        [string]$ResourcePrefix
+    )
+
+    $Environments = (az pipelines variable-group list `
+    --query "[?starts_with(name, ``$ResourcePrefix-env-vars-``)].variables.EnvironmentName.value" `
+    | ConvertFrom-Json)
+
+    return $Environments
 }
 
 function Get-NextAzureResourceName {
@@ -246,17 +388,39 @@ function Set-AzResourceGroup {
     return $ResourceGroup
 }
 
+function Get-AzServicePrincipal {
+    param(
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    $Name = Get-AzServicePrincipalName -ResourcePrefix $ResourcePrefix -Environment $Environment
+
+    $ServicePrincipal = (az ad sp list --display-name $Name --query '[0]' | ConvertFrom-Json)
+
+    return $ServicePrincipal
+}
+
+function Get-AzServicePrincipalName {
+    param(
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    return Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment -Suffix 'sp'
+}
+
 function Set-AzServicePrincipal {
     param(
         [string]$ResourcePrefix,
         [string]$Environment
     )
 
-    $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment -Suffix 'sp'
+    $Name = Get-AzServicePrincipalName -ResourcePrefix $ResourcePrefix -Environment $Environment
 
     Write-Information "Creating (or updating existing) Service Principal '$Name'"
 
-    $ServicePrincipal = (az ad sp create-for-rbac --name $Name | ConvertFrom-Json)
+    $ServicePrincipal = (az ad sp create-for-rbac --name $Name  --skip-assignment | ConvertFrom-Json)
 
     # We need to update the Service Prinipal to add SPN auth, but we suppress the output
     $VsSpnUrl = 'https://VisualStudio/SPN'
@@ -264,6 +428,24 @@ function Set-AzServicePrincipal {
     $null = az ad app update --id $ServicePrincipal.appId --reply-urls $VsSpnUrl --homepage $VsSpnUrl
 
     return $ServicePrincipal
+}
+
+function Set-AzRoleAssignment {
+    param(
+        [string]$Role,
+        [string]$Assignee,
+        [string]$Scope
+    )
+
+    Write-Information "Creating (or updating existing) '$Role' Role Assignment"
+
+    $RoleAssignment = (az role assignment create `
+    --role $Role `
+    --assignee $Assignee `
+    --scope $Scope `
+    | ConvertFrom-Json)
+
+    return $RoleAssignment
 }
 
 function Get-AzServiceConnection {
@@ -437,7 +619,8 @@ function Set-AzVariableGroup {
     param(
         [string]$ResourcePrefix,
         [string]$Environment,
-        [hashtable]$Variables
+        [hashtable]$Variables,
+        [switch]$UpdateOnly = $false
     )
 
     $Name = Get-NextAzureResourceName -Prefix "$ResourcePrefix-env-vars" -Environment $Environment
@@ -449,9 +632,16 @@ function Set-AzVariableGroup {
 
         Write-Information "Updating Variable Group '$Name'"
 
-        $VariableGroup = Set-AzVariableGroupVariables -VariableGroupId $($VariableGroup.id) -Variables $Variables
+        $VariableGroup = Set-AzVariableGroupVariables `
+        -VariableGroupId $($VariableGroup.id) `
+        -Variables $Variables `
+        -UpdateOnly $UpdateOnly
 
         return $VariableGroup
+    }
+
+    if ($UpdateOnly) {
+        return $null
     }
 
     # Create the Variable Group
@@ -476,25 +666,36 @@ function Set-AzVariableGroup {
 function Set-AzVariableGroupVariables {
     param(
         [int]$VariableGroupId,
-        [hashtable]$Variables
+        [hashtable]$Variables,
+        [switch]$UpdateOnly = $false
     )
 
     $GroupVariables = (az pipelines variable-group variable list --group-id $VariableGroupId | ConvertFrom-Json)
 
     foreach($Key in $Variables.Keys) {
-        $GroupVariable = Get-Member -InputObject $GroupVariables -Name $Key -Membertype Properties
+        $GroupVariable = $GroupVariables.$Key
 
         $Value = $Variables[$Key]
 
         if ($GroupVariable) {
-            Write-Verbose "Updating Variable '$Key'"
+            $CurrentValue = $GroupVariables.$Key.value
 
-            $null = Set-AzVariableGroupVariable -VariableGroupId $VariableGroupId -Name $Key -Value $Value
+            if ($Value -eq $CurrentValue) {
+                Write-Information "Value of Variable '$Key' has not changed"
+            }
+            else {
+                Write-Information "Updating Variable '$Key'"
+
+                $null = Set-AzVariableGroupVariable -VariableGroupId $VariableGroupId -Name $Key -Value $Value
+            }
         }
-        else {
-            Write-Verbose "Creating Variable '$Key'"
+        elseif (!$UpdateOnly) {
+            Write-Information "Creating Variable '$Key'"
 
             $null = New-AzVariableGroupVariable -VariableGroupId $VariableGroupId -Name $Key -Value $Value
+        }
+        else {
+            Write-Information "Variable '$Key' does not exist - ignoring"
         }
     }
 
@@ -520,6 +721,7 @@ function New-AzVariableGroupVariable {
         | ConvertFrom-Json)
     }
     else {
+        # If there is no value we omit the `--value` arg
         $Variable = (az pipelines variable-group variable create `
         --group-id $VariableGroupId `
         --name $Name `
@@ -536,21 +738,13 @@ function Set-AzVariableGroupVariable {
         [string]$Value
     )
 
-    $Variable = $null
-
-    if ($Value) {
-        $Variable = (az pipelines variable-group variable update `
-        --group-id $VariableGroupId `
-        --name $Name `
-        --value $Value `
-        | ConvertFrom-Json)
-    }
-    else {
-        $Variable = (az pipelines variable-group variable update `
-        --group-id $VariableGroupId `
-        --name $Name `
-        | ConvertFrom-Json)
-    }
+    # Cannot "clear" a value - setting `value` to $null is an error; omitting the `value` is an error
+    #TODO: Raise issue upstream - cannot "clear" a variable using update; cannot delete as the delete command hangs
+    $Variable = (az pipelines variable-group variable update `
+    --group-id $VariableGroupId `
+    --name $Name `
+    --value $($Value ? $Value : $null) `
+    | ConvertFrom-Json)
 
     return $Variable
 }
@@ -567,4 +761,5 @@ Export-ModuleMember -Function Set-NextAzureConfig
 Export-ModuleMember -Function Set-AzCliDefaults
 Export-ModuleMember -Function Set-NextAzureDefaults
 Export-ModuleMember -Function Set-NextAzureEnvironment
+Export-ModuleMember -Function Set-NextAzureUseAppServiceSlots
 Export-ModuleMember -Function Write-Line
