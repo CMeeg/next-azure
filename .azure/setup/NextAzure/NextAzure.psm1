@@ -39,6 +39,7 @@ function Get-NextAzureConfig {
 
 function Get-NextAzureConfigPath {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ConfigDir
     )
 
@@ -64,12 +65,15 @@ function Get-NextAzureConfigPath {
     if ($ParentConfigDir) {
         return Get-NextAzureConfigPath -ConfigDir $ParentConfigDir
     }
+
+    return $null
 }
 
 function Set-NextAzureConfig {
     [CmdletBinding()]
     param(
         $Config,
+        [Parameter(Mandatory=$true)]
         [hashtable]$Settings
     )
 
@@ -130,6 +134,7 @@ function Set-NextAzureConfig {
 function Set-AzCliDefaults {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         $Config
     )
 
@@ -145,9 +150,11 @@ function Set-AzCliDefaults {
 function Set-NextAzureDefaults {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         $Config,
+        [Parameter(Mandatory=$true)]
         [string]$WebAppSkuName,
-        [int]$WebAppSkuCapacity
+        [int]$WebAppSkuCapacity = 1
     )
 
     # Set Variable Group
@@ -170,7 +177,9 @@ function Set-NextAzureDefaults {
 function Set-NextAzureEnvironment {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory=$true)]
         $Config,
+        [Parameter(Mandatory=$true)]
         [string]$Environment
     )
 
@@ -275,9 +284,7 @@ function Set-NextAzureUseAppServiceSlots {
         WebAppSkuName = $WebAppSkuName
     }
 
-    $null = Set-AzVariableGroup `
-    -ResourcePrefix $ResourcePrefix `
-    -Variables $Variables
+    $null = Set-AzVariableGroup -ResourcePrefix $ResourcePrefix -Variables $Variables
 
     Write-Line
 
@@ -297,8 +304,11 @@ function Set-NextAzureUseAppServiceSlots {
 
 function Set-NextAzureEnvironmentAppServiceSlot {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
+        [Parameter(Mandatory=$true)]
         [string]$Environment,
+        [Parameter(Mandatory=$true)]
         [string]$SharedResourceGroupId
     )
 
@@ -335,6 +345,7 @@ function Set-NextAzureEnvironmentAppServiceSlot {
 
 function Get-NextAzureEnvironments {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix
     )
 
@@ -347,6 +358,7 @@ function Get-NextAzureEnvironments {
 
 function Get-NextAzureResourceName {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Prefix,
         [string]$Environment,
         [string]$Suffix,
@@ -374,8 +386,10 @@ function Get-CurrentAzSubscription {
 
 function Set-AzResourceGroup {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment,
+        [Parameter(Mandatory=$true)]
         [string]$Location
     )
 
@@ -390,6 +404,7 @@ function Set-AzResourceGroup {
 
 function Get-AzServicePrincipal {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
@@ -403,6 +418,7 @@ function Get-AzServicePrincipal {
 
 function Get-AzServicePrincipalName {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
@@ -412,6 +428,7 @@ function Get-AzServicePrincipalName {
 
 function Set-AzServicePrincipal {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
@@ -432,8 +449,11 @@ function Set-AzServicePrincipal {
 
 function Set-AzRoleAssignment {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Role,
+        [Parameter(Mandatory=$true)]
         [string]$Assignee,
+        [Parameter(Mandatory=$true)]
         [string]$Scope
     )
 
@@ -450,6 +470,7 @@ function Set-AzRoleAssignment {
 
 function Get-AzServiceConnection {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Name
     )
 
@@ -460,6 +481,7 @@ function Get-AzServiceConnection {
 
 function Set-AzServiceConnection {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
@@ -520,8 +542,11 @@ function Set-AzServiceConnection {
 
 function Get-AzEnvironment {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$Name,
+        [Parameter(Mandatory=$true)]
         [string]$Project,
+        [Parameter(Mandatory=$true)]
         [string]$Organization
     )
 
@@ -542,9 +567,13 @@ function Get-AzEnvironment {
 
 function Set-AzEnvironment {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
+        [Parameter(Mandatory=$true)]
         [string]$Environment,
+        [Parameter(Mandatory=$true)]
         [string]$OrgUrl,
+        [Parameter(Mandatory=$true)]
         [string]$ProjectName
     )
 
@@ -608,19 +637,25 @@ function Get-AzVariableGroup {
         return $VariableGroup
     }
 
-    $VariableGroup = (az pipelines variable-group list `
-    --query "[?name=='$Name'] | [0]" `
-    | ConvertFrom-Json)
+    if ($Name) {
+        $VariableGroup = (az pipelines variable-group list `
+        --query "[?name=='$Name'] | [0]" `
+        | ConvertFrom-Json)
 
-    return $VariableGroup
+        return $VariableGroup
+    }
+
+    return $null
 }
 
 function Set-AzVariableGroup {
     param(
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment,
+        [Parameter(Mandatory=$true)]
         [hashtable]$Variables,
-        [switch]$UpdateOnly = $false
+        [switch]$UpdateOnly
     )
 
     $Name = Get-NextAzureResourceName -Prefix "$ResourcePrefix-env-vars" -Environment $Environment
@@ -635,7 +670,7 @@ function Set-AzVariableGroup {
         $VariableGroup = Set-AzVariableGroupVariables `
         -VariableGroupId $($VariableGroup.id) `
         -Variables $Variables `
-        -UpdateOnly $UpdateOnly
+        -UpdateOnly:$UpdateOnly
 
         return $VariableGroup
     }
@@ -665,9 +700,11 @@ function Set-AzVariableGroup {
 
 function Set-AzVariableGroupVariables {
     param(
+        [Parameter(Mandatory=$true)]
         [int]$VariableGroupId,
+        [Parameter(Mandatory=$true)]
         [hashtable]$Variables,
-        [switch]$UpdateOnly = $false
+        [switch]$UpdateOnly
     )
 
     $GroupVariables = (az pipelines variable-group variable list --group-id $VariableGroupId | ConvertFrom-Json)
@@ -706,7 +743,9 @@ function Set-AzVariableGroupVariables {
 
 function New-AzVariableGroupVariable {
     param(
+        [Parameter(Mandatory=$true)]
         [int]$VariableGroupId,
+        [Parameter(Mandatory=$true)]
         [string]$Name,
         [string]$Value
     )
@@ -733,7 +772,9 @@ function New-AzVariableGroupVariable {
 
 function Set-AzVariableGroupVariable {
     param(
+        [Parameter(Mandatory=$true)]
         [int]$VariableGroupId,
+        [Parameter(Mandatory=$true)]
         [string]$Name,
         [string]$Value
     )
