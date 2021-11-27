@@ -33,7 +33,7 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$ProductionEnvironment,
     [string]$SkuName = 'S1',
-    [switch]$Force = $false
+    [switch]$Force
 )
 
 # Ensure latest "version" of NextAzure module is imported

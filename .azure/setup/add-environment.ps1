@@ -26,7 +26,7 @@ https://github.com/CMeeg/next-azure
 param(
     [Parameter(Mandatory=$true)]
     [string]$Environment,
-    [switch]$Force = $false
+    [switch]$Force
 )
 
 # Ensure latest "version" of NextAzure module is imported

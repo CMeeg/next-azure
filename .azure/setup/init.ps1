@@ -14,6 +14,9 @@ A string that will be used to prefix resource names for this project - it should
 
 Please make sure that there are no existing resources using this same prefix as this could lead to unintended changes.
 
+.PARAMETER Environments
+An array (comma-separated-values) of environment names that you want to create. Defaults to `preview,prod`.
+
 .PARAMETER Location
 The Location name where you want to deploy your Azure resources e.g. westeurope.
 
@@ -45,13 +48,14 @@ param(
     [string]$SubscriptionId,
     [Parameter(Mandatory=$true)]
     [string]$ResourcePrefix,
+    [string[]]$Environments = @('preview','prod'),
     [Parameter(Mandatory=$true)]
     [string]$Location,
     [Parameter(Mandatory=$true)]
     [string]$OrgUrl,
     [Parameter(Mandatory=$true)]
     [string]$ProjectName,
-    [switch]$Force = $false
+    [switch]$Force
 )
 
 # Ensure latest "version" of NextAzure module is imported
@@ -100,13 +104,11 @@ Write-Line -InformationAction Continue
 
 # Init environments
 
-Set-NextAzureEnvironment -Config $Config -Environment 'preview' -InformationAction Continue
+foreach ($Environment in $Environments) {
+    Set-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
 
-Write-Line -InformationAction Continue
-
-Set-NextAzureEnvironment -Config $Config -Environment 'prod' -InformationAction Continue
-
-Write-Line -InformationAction Continue
+    Write-Line -InformationAction Continue
+}
 
 Write-Information "`u{2714}`u{FE0F} Done"
 

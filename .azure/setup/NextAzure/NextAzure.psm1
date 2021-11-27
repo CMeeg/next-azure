@@ -97,11 +97,11 @@ function Set-NextAzureConfig {
         $ConfigSettings = $Config.Settings
 
         foreach ($Key in $Settings.Keys) {
-            $ConfigSetting = $ConfigSettings.$Key
+            $SettingExists = Test-HasProperty -Subject $ConfigSettings -Property $Key
 
             $Value = $Settings[$Key]
 
-            if ($ConfigSetting) {
+            if ($SettingExists) {
                 $ConfigSettings.$Key = $Value
             }
             else {
@@ -129,6 +129,19 @@ function Set-NextAzureConfig {
         Settings = $ConfigSettings
         Path = $ConfigPath
     }
+}
+
+function Test-HasProperty {
+    param(
+        $Subject,
+        [string]$Property
+    )
+
+    if ($Subject -and $Property) {
+        return [bool]$Subject.PSObject.Properties[$Property]
+    }
+
+    return $false
 }
 
 function Set-AzCliDefaults {
@@ -761,11 +774,11 @@ function Set-AzVariableGroupVariables {
     $GroupVariables = (az pipelines variable-group variable list --group-id $VariableGroupId | ConvertFrom-Json)
 
     foreach($Key in $Variables.Keys) {
-        $GroupVariable = $GroupVariables.$Key
+        $VariableExists = Test-HasProperty -Subject $GroupVariables -Property $Key
 
         $Value = $Variables[$Key]
 
-        if ($GroupVariable) {
+        if ($VariableExists) {
             $CurrentValue = $GroupVariables.$Key.value
 
             if ($Value -eq $CurrentValue) {
