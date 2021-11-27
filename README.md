@@ -142,7 +142,8 @@ Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/a
 
 Assuming you have already run the [initialisation script](#run-the-azure-initialisation-script) you can run the following script to setup deployment slots in your Pipeline:
 
-* ` ./.azure/setup/use-slots.ps1`
+* ` ./.azure/setup/use-slots.ps1 -ProductionEnvironment {production_environment_name}`
+  * Unless you have customised these scripts, the `{production_environment_name}` is `prod`
   * To see a full description of the script and its parameters, run `Get-Help .azure/setup/use-slots.ps1 -Full`
 
 ### Configure auto swap for the production environment
@@ -159,6 +160,22 @@ Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-th
 * Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed it):
   * `next-app-env-vars-prod`
     * `WebAppSwapSlotName` = `prodswap` (or feel free to name it what you like!)
+
+### Add additional target environments
+
+Depending on your branching and release strategy you may wish to add additional target environments to the Pipeline. For example, if you maintain a long-running `develop` branch that is used for integrating "feature" branches before they are merged into the "main" branch - you may want to deploy merges to `develop` into a `build` environment.
+
+To add an additional target environment you can run the following script:
+
+* ` ./.azure/setup/add-environment.ps1 -Environment {environment_name}`
+  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/add-environment.ps1 -Full`
+
+You must then alter your Pipeline to add a trigger and condition for deploying to the new target environment:
+
+* Edit `.azure/azure-pipelines.yml`
+  * Modify the `trigger` to include the relevant branch
+  * Use a [conditional insertion](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditional-insertion) expression to ensure that the Variables from the new environment's Variable Group are made available to the Pipeline
+    * Search for `-group` in the Pipeline yml file to see an example of how this is done for the `production` environment, which checks that the "source branch" is the "main" branch
 
 #### Add Approvals and Checks to an Environment
 
@@ -280,23 +297,6 @@ This is not an ideal situation to be in - a unique deployment for each PR would 
   * If you introduced a CI stage to the Pipeline (for running unit tests for example) then you could have this stage run prior to Approvals and checks so you are not waiting to Approve and review a deployment that will ultimately fail anyway
 * Manually choose what branch to deploy to the `preview` environment and when
   * You can [disable the PR trigger](https://docs.microsoft.com/en-us/azure/devops/pipelines/repos/github?view=azure-devops&tabs=yaml#opting-out-of-pr-validation) in the Pipeline and instead manually run the Pipeline and choose which branch to deploy as and when you want to
-
-### Add additional target environments
-
-Depending on your branching and release strategy you may wish to add additional target environments to the Pipeline. For example, if you maintain a long-running `develop` branch that is used for integrating "feature" branches before they are merged into the "main" branch - you may want to deploy merges to `develop` into a `build` environment.
-
-To add an additional target environment you should:
-
-* [Add a Resource Group](#create-resource-groups-via-the-azure-portal) for the new environment
-* [Add a Service Connection](#create-service-connections-in-azure-devops) for the new environment
-  * [Add permissions on the "shared" Resource Group](#allow-your-service-connections-to-deploy-to-the-shared-resource-group) if using deployment slots
-* [Add an Environment](#create-environments-in-azure-devops) for the new environment
-* [Add a Variable Group](#create-variable-groups-in-azure-devops) for the new environment
-  * [Add deployment slot Variables](#update-variable-groups) if using deployment slots
-* Edit `.azure/azure-pipelines.yml`
-  * Modify the `trigger` to include the relevant branch
-  * Use a [conditional insertion](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditional-insertion) expression to ensure that the Variables from the new environment's Variable Group are made available to the Pipeline
-    * Search for `-group` in the Pipeline yml file to see an example of how this is done for the `production` environment, which checks that the "source branch" is the "main" branch
 
 ### Change the resource naming conventions
 

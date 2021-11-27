@@ -183,6 +183,8 @@ function Set-NextAzureEnvironment {
         [string]$Environment
     )
 
+    $ResourcePrefix = $Config.Settings.ResourcePrefix
+
     Write-Information "--- Setting up '$Environment' environment ---"
 
     # Set Resource Group
@@ -190,7 +192,7 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Resource Group"
 
     $AzResourceGroup = Set-AzResourceGroup `
-    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
+    -ResourcePrefix $ResourcePrefix `
     -Environment $Environment `
     -Location $($Config.Settings.Location)
 
@@ -201,7 +203,7 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Service Connection"
 
     $AzServiceConnection = Set-AzServiceConnection `
-    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
+    -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
     Write-Line
@@ -211,7 +213,7 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Role Assignment on Resource Group for Service Connection"
 
     $AzServicePrincipal = Get-AzServicePrincipal `
-    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
+    -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
     $null = Set-AzRoleAssignment `
@@ -226,7 +228,7 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Environment"
 
     $AzEnvironment = Set-AzEnvironment `
-    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
+    -ResourcePrefix $ResourcePrefix `
     -Environment $Environment `
     -OrgUrl $($Config.Settings.OrgUrl) `
     -ProjectName $($Config.Settings.ProjectName)
@@ -249,9 +251,21 @@ function Set-NextAzureEnvironment {
     }
 
     $null = Set-AzVariableGroup `
-    -ResourcePrefix $($Config.Settings.ResourcePrefix) `
+    -ResourcePrefix $ResourcePrefix `
     -Environment $Environment `
     -Variables $Variables
+
+    if ($Config.Settings.UseDeploymentSlots) {
+        Write-Line
+
+        # Get shared resource group
+        $AzSharedResourceGroup = Get-AzResourceGroup $ResourcePrefix
+
+        $null = Set-NextAzureEnvironmentAppServiceSlot `
+        -ResourcePrefix $ResourcePrefix `
+        -Environment $Environment `
+        -SharedResourceGroupId $AzSharedResourceGroup.id
+    }
 }
 
 function Set-NextAzureUseAppServiceSlots {
@@ -356,6 +370,19 @@ function Get-NextAzureEnvironments {
     return $Environments
 }
 
+function Test-NextAzureEnvironment {
+    param(
+        [Parameter(Mandatory=$true)]
+        $Config,
+        [Parameter(Mandatory=$true)]
+        [string]$Environment
+    )
+
+    $Environments = Get-NextAzureEnvironments -ResourcePrefix $($Config.Settings.ResourcePrefix)
+
+    return $Environments -contains $Environment
+}
+
 function Get-NextAzureResourceName {
     param(
         [Parameter(Mandatory=$true)]
@@ -384,6 +411,30 @@ function Get-CurrentAzSubscription {
     return $Subscription
 }
 
+function Get-AzResourceGroup {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    $Name = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix -Environment $Environment
+
+    $ResourceGroup = (az group show --name $Name | ConvertFrom-Json)
+
+    return $ResourceGroup
+}
+
+function Get-AzResourceGroupName {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    return Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment -Suffix 'rg'
+}
+
 function Set-AzResourceGroup {
     param(
         [Parameter(Mandatory=$true)]
@@ -393,7 +444,7 @@ function Set-AzResourceGroup {
         [string]$Location
     )
 
-    $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment -Suffix 'rg'
+    $Name = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix -Environment $Environment
 
     Write-Information "Creating (or updating existing) Resource Group '$Name'"
 
@@ -803,4 +854,5 @@ Export-ModuleMember -Function Set-AzCliDefaults
 Export-ModuleMember -Function Set-NextAzureDefaults
 Export-ModuleMember -Function Set-NextAzureEnvironment
 Export-ModuleMember -Function Set-NextAzureUseAppServiceSlots
+Export-ModuleMember -Function Test-NextAzureEnvironment
 Export-ModuleMember -Function Write-Line
