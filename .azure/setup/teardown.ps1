@@ -1,16 +1,10 @@
 <#
 
 .SYNOPSIS
-Removes an environment for a next-azure project.
+Removes all environments for a next-azure project.
 
 .DESCRIPTION
-Deletes the Resource Group, Service Connection, Environment and Variable Group in Azure and Azure DevOps for a single environment used by this project's next-azure deployment Pipeline.
-
-.PARAMETER Environment
-Name of the environment that you would like to remove e.g. `build`.
-
-.PARAMETER Force
-Use this switch to force this script to run.
+Deletes all Resource Groups, Service Connections, Environments and Variable Groups in Azure and Azure DevOps for a all environments used by this project's next-azure deployment Pipeline.
 
 .INPUTS
 None
@@ -23,11 +17,7 @@ https://github.com/CMeeg/next-azure
 
 #>
 [CmdletBinding()]
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$Environment,
-    [switch]$Force
-)
+param()
 
 # Ensure latest "version" of NextAzure module is imported
 
@@ -55,21 +45,11 @@ if (!$Config) {
 
 Set-AzCliDefaults -Config $Config -InformationAction Continue
 
-# Check to see if environment exists
-
-$EnvironmentExists = Test-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
-
-if (!$EnvironmentExists -and !$Force) {
-    Write-Error "Environment '$Environment' does not exist. You can add a -Force switch if you want to continue anyway."
-
-    return
-}
-
 Write-Line -InformationAction Continue
 
 # Prompt for confirmation
 
-$Confirmation = Read-Host "Are you sure you want to remove the '$Environment' environment? [y/n]"
+$Confirmation = Read-Host "Are you sure you want to remove ALL existing environments? [y/n]"
 if ($Confirmation -ne 'y') {
     Write-Information "No action taken" -InformationAction Continue
 
@@ -78,11 +58,15 @@ if ($Confirmation -ne 'y') {
 
 Write-Line -InformationAction Continue
 
-# Remove environment
+# Remove defaults
 
-Remove-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
+$null = Remove-NextAzureDefaults -Config $Config -InformationAction Continue
 
 Write-Line -InformationAction Continue
+
+# Remove environments
+
+$null = Remove-AllNextAzureEnvironments -Config $Config -InformationAction Continue
 
 Write-Information "`u{2714}`u{FE0F} Done"
 

@@ -187,6 +187,22 @@ function Set-NextAzureDefaults {
     $null = Set-AzVariableGroup -ResourcePrefix $ResourcePrefix -Variables $Variables
 }
 
+function Remove-NextAzureDefaults {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        $Config
+    )
+
+    # Remove Variable Group
+
+    Write-Information "--- Removing defaults ---"
+
+    Write-Information "Removing Variable Group"
+
+    $null = Remove-AzVariableGroup -ResourcePrefix $($Config.Settings.ResourcePrefix)
+}
+
 function Set-NextAzureEnvironment {
     [CmdletBinding()]
     param(
@@ -340,6 +356,22 @@ function Remove-NextAzureEnvironment {
 
         # Remove shared resource group
         $null = Remove-AzResourceGroup $ResourcePrefix
+    }
+}
+
+function Remove-AllNextAzureEnvironments {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        $Config
+    )
+
+    $Environments = Get-NextAzureEnvironments -ResourcePrefix $($Config.Settings.ResourcePrefix)
+
+    foreach ($Environment in $Environments) {
+        $null = Remove-NextAzureEnvironment -Config $Config -Environment $Environment
+
+        Write-Line
     }
 }
 
@@ -1076,5 +1108,7 @@ Export-ModuleMember -Function Set-NextAzureDefaults
 Export-ModuleMember -Function Set-NextAzureEnvironment
 Export-ModuleMember -Function Set-NextAzureUseAppServiceSlots
 Export-ModuleMember -Function Test-NextAzureEnvironment
+Export-ModuleMember -Function Remove-NextAzureDefaults
 Export-ModuleMember -Function Remove-NextAzureEnvironment
+Export-ModuleMember -Function Remove-AllNextAzureEnvironments
 Export-ModuleMember -Function Write-Line

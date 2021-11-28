@@ -98,7 +98,7 @@ The Pipeline is now ready to run. It can be triggered by pushing commits to your
 
 The [Initialisation script](#run-the-azure-initialisation-script) creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation - please commit this to your repo now and push your changes.
 
-> By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-the-preview-environment), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
+> By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-non-production-environments), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
 
 Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment.
 
@@ -135,7 +135,7 @@ If you're familiar with the output of "Create Next App" then you will be mostly 
 
 > If you have an existing Next.js app that you are looking to deploy to Azure you could use the above as a rough guide for where to look for code that you can copy from this example repo to your own project.
 
-### Use a deployment slot for the preview environment
+### Use a deployment slot for non-production environments
 
 By default, the Pipeline will deploy your app to a separate App Service per target environment, but it also supports deploying to a single App Service using [deployment slots](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) for each target environment.
 
@@ -158,7 +158,7 @@ Assuming you have already run the [initialisation script](#run-the-azure-initial
 
 > You can configure auto swap for any target deployment slot, but it is most common to use it just for the production environment because typically that's the only environment where the above benefits will really matter, plus it effectively consumes one of your available slots so you wouldn't want to use it for every environment.
 
-Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-the-preview-environment) you can modify your setup in the following way to use auto swap for your production environment:
+Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-non-production-environments) you can modify your setup in the following way to use auto swap for your production environment:
 
 * Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed it):
   * `next-app-env-vars-prod`
@@ -180,7 +180,7 @@ You must then alter your Pipeline to add a trigger and condition for deploying t
   * Use a [conditional insertion](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#conditional-insertion) expression to ensure that the Variables from the new environment's Variable Group are made available to the Pipeline
     * Search for `-group` in the Pipeline yml file to see an example of how this is done for the `production` environment, which checks that the "source branch" is the "main" branch
 
-#### Add Approvals and Checks to an Environment
+### Add Approvals and Checks to an Environment
 
 Environments are used to track deployments in Azure DevOps and to allow for Approvals and Checks to be put in place (if desired), which requires one or more reviewers to Approve or Reject a deployment before it can run the deployment. An email notification is sent to all reviewers when there is a deployment to review.
 
@@ -311,7 +311,7 @@ Where:
 
 * `resourcePrefix` is the value set in the `main.parameters.json.template` file
 * `environment` is the `EnvironmentName` variable set in the associated Variable Group
-  * The `environment` isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-the-preview-environment)
+  * The `environment` isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-non-production-environments)
 * `resourceSuffix` is hardcoded inside the Bicep files and is usually a two to three character string representing the type of resource e.g. `app` for App Service, `cdn` for CDN endpoint
 
 You can edit the Bicep scripts to change this convention if it doesn't suit you or your team.
@@ -345,11 +345,18 @@ You can then call [functions of the telemetry client](https://docs.microsoft.com
 If you want to remove one of the environments for your project you can run the following script:
 
 * ` ./.azure/setup/remove-environment.ps1 -Environment {environment_name}`
-  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/add-environment.ps1 -Full`
+  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/remove-environment.ps1 -Full`
 
 > Please be aware that if you are using deployment slots and choose to delete your production environment then the deployment slots for all other environments will also be deleted.
 
 You must then alter your `.azure/azure-pipelines.yml` Pipeline to remove any trigger or condition associated with the target environment that has been removed.
+
+### Remove all environments
+
+If you want to remove all environments for your project you can run the following script:
+
+* ` ./.azure/setup/teardown.ps1`
+  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/teardown.ps1 -Full`
 
 ## FAQ
 
