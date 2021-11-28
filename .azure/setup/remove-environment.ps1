@@ -1,16 +1,16 @@
 <#
 
 .SYNOPSIS
-Adds a new deployment environment for a next-azure project.
+Removes an environment for a next-azure project.
 
 .DESCRIPTION
-Creates a new Resource Group, Service Connection, Environment and Variable Group (and sets up the deployment slot if being used) in Azure and Azure DevOps ready for deploying to as a new target environment by the next-azure deployment Pipeline.
+Deletes the Resource Group, Service Connection, Environment and Variable Group in Azure and Azure DevOps for a single environment used by the next-azure deployment Pipeline.
 
 .PARAMETER Environment
-Name of the environment that you would like to add e.g. `build`.
+Name of the environment that you would like to remove e.g. `build`.
 
 .PARAMETER Force
-Use this switch to force this script to run. Use with caution as this may cause existing resources to be updated.
+Use this switch to force this script to run.
 
 .INPUTS
 None
@@ -55,21 +55,21 @@ if (!$Config) {
 
 Set-AzCliDefaults -Config $Config -InformationAction Continue
 
-# Check to see if environment already exists
+# Check to see if environment exists
 
 $EnvironmentExists = Test-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
 
-if ($EnvironmentExists -and !$Force) {
-    Write-Error "Environment '$Environment' already exists. You can add a -Force switch if you want to continue anyway."
+if (!$EnvironmentExists -and !$Force) {
+    Write-Error "Environment '$Environment' does not exist. You can add a -Force switch if you want to continue anyway."
 
     return
 }
 
 Write-Line -InformationAction Continue
 
-# Setup environment
+# Remove environment
 
-Set-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
+Remove-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
 
 Write-Line -InformationAction Continue
 

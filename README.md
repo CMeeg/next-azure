@@ -6,8 +6,9 @@ The Next.js app included in this example is the same app created by the default 
 
 Changes have been kept to a minimum, but are enough to get you up and running with:
 
-* A CI/CD pipeline for building and deploying a Next.js app to Azure
-  * The pipeline will provision the necessary infrastructure for you in Azure as described in the included [Bicep](https://github.com/Azure/bicep) files
+* PowerShell scripts for quickly creating and tearing down environments
+* An Azure DevOps Pipeline for building and deploying a Next.js app to Azure
+  * The Pipeline will provision the necessary infrastructure for you in Azure as described in the included [Bicep](https://github.com/Azure/bicep) files
 * A Next.js app hosted and running in Azure App Services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration)
   * Next's [Middleware](https://nextjs.org/docs/middleware) feature is also suported
 * A CDN for caching static assets, and [Application Insights](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for application monitoring
@@ -36,7 +37,7 @@ You can use the Create Next App tool to initialise your project using this examp
 
 ### Create Azure Resource Groups and Pipeline
 
-There is some initial setup required in Azure that can be achieved by running a PowerShell script provided in this repo.
+There is some initial setup required to create the resources required for the deployment environments targeted by the Pipeline. This can be achieved by running a PowerShell script provided in this repo.
 
 The script creates:
 
@@ -78,7 +79,9 @@ To use the initialisation script:
 
 #### Create the pipeline
 
-The Pipeline will provision your infrastructure in Azure, and build and deploy your application to that infrastructure. You will set this up manually because you need to be able to authorise the Pipeline to connect to your project's repository.
+The Pipeline will provision the infrastructure in Azure required to host your app, and build and deploy your application to that infrastructure.
+
+> You will set the Pipeline up manually because you need to be able to authorise the Pipeline to connect to your project's repository, and there are too many options to cover in this example repo. Thankfully setting up the Pipeline manually is pretty painless.
 
 To create the Pipeline:
 
@@ -93,7 +96,7 @@ To create the Pipeline:
 
 The Pipeline is now ready to run. It can be triggered by pushing commits to your repository.
 
-The [Initialisation script](#run-the-azure-initialisation-script) creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation - please commit this to your repo and push your changes.
+The [Initialisation script](#run-the-azure-initialisation-script) creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation - please commit this to your repo now and push your changes.
 
 > By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-the-preview-environment), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
 
@@ -103,9 +106,9 @@ Create a new pull request from your feature branch to your "main" branch - this 
 
 If you're happy with the `preview` deployment, merge the pull request - this will start a new pipeline run and deploy your app to your `production` environment.
 
-> You will need to review and approve pipeline runs if you set up "Approvals and checks" for the Azure DevOps Environment.
+> You will need to review and approve pipeline runs if you set up [Approvals and checks](#add-approvals-and-checks-to-an-environment) for the Azure DevOps Environment.
 
-✔️ And we're done! Your app will now be deployed to your `preview` environment each time commits are pushed to a PR targeting your "main" branch; and to your `production` environment when commits are pushed to your "main" branch.
+✔️ And you're done! Your app will now be deployed to your `preview` environment each time commits are pushed to a PR targeting your "main" branch; and to your `production` environment when commits are pushed to your "main" branch.
 
 ## Usage
 
@@ -138,7 +141,7 @@ By default, the Pipeline will deploy your app to a separate App Service per targ
 
 Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is an opt-in feature as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots) because there is a cost involved.
 
-> The Pipeline also supports [auto swap](#configure-auto-swap-for-the-production-environment) of deployment slots.
+> The Pipeline also supports [auto swap](#configure-auto-swap-for-the-production-environment) of deployment slots, which is recommended to setup for your production environment if you choose to use deployment slots.
 
 Assuming you have already run the [initialisation script](#run-the-azure-initialisation-script) you can run the following script to setup deployment slots in your Pipeline:
 
@@ -150,16 +153,16 @@ Assuming you have already run the [initialisation script](#run-the-azure-initial
 
 [Auto swap](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#configure-auto-swap) involves deploying the app to a "source" deployment slot that automatically swaps to a "target" deployment slot. It is useful because it:
 
-* Minimises downtime - the app will be "warmed up" in the source slot before it is swapped with the target slot
+* Minimises downtime - the app will be "[warmed up](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#specify-custom-warm-up)" in the source slot before it is swapped with the target slot
 * Enables easy rollback - if there is an issue post-deployment and you require rollback you can swap the target slot with the source slot (that now holds the previous version of your app)
 
-You can configure auto swap for any target deployment slot, but it is most common to use it just for the production environment because typically that's the only environment where the above benefits will really matter, plus it effectively consumes one of your available slots so you wouldn't want to use it for every environment.
+> You can configure auto swap for any target deployment slot, but it is most common to use it just for the production environment because typically that's the only environment where the above benefits will really matter, plus it effectively consumes one of your available slots so you wouldn't want to use it for every environment.
 
 Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-the-preview-environment) you can modify your setup in the following way to use auto swap for your production environment:
 
 * Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed it):
   * `next-app-env-vars-prod`
-    * `WebAppSwapSlotName` = `prodswap` (or feel free to name it what you like!)
+    * `WebAppSwapSlotName` = `prodswap` (or feel free to name it whatever you like!)
 
 ### Add additional target environments
 
@@ -206,14 +209,14 @@ Assuming you have followed the [Getting started](#getting-started) guide and the
 
 #### Add DNS records
 
-Azure validates that you "own" any custom domain that you add to an App Service by checking the DNS records of the domain. You will need to add two DNS records to your domain:
+Azure validates that you "own" any custom domain that you add to an App Service by checking the DNS records of the domain. You will need to [add two DNS records](https://docs.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-custom-domain?tabs=cname#4-create-the-dns-records) to your domain:
 
 * A `CNAME` record from `www` or `{subdomain}` to the `azurewebsites.net` default host
 * A `TXT` record from `asuid.www` or `asuid.{subdomain}` with "Custom Domain Verification ID" value
 
 > The exact steps required to do this vary depending on your DNS provider so aren't documented here.
 
-The "Custom Domain Verification ID" is a unique value per Subscription, and the easiest way to get it is by:
+The "[Custom Domain Verification ID](https://docs.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-custom-domain?tabs=cname#3-get-a-domain-verification-id)" is a unique value per Subscription, and the easiest way to get it is by:
 
 * Browsing to any existing App Service or Function App in the Subscription in the Azure Portal
 * Clicking on "Custom domains"
@@ -249,19 +252,19 @@ The last thing to do is to update the appropriate Variable Group in Azure DevOps
 To update the Variable Group:
 
 * Go to Pipelines > Library in your Azure DevOps project, and edit the Variable Group related to the target environment you will be adding the custom domain to
-  * Add the following variables
+  * Update the following variables
     * `WebAppDomainName` = {The custom domain name}
     * `WebAppCertName` = {The name of the SSL cert in the Key Vault}
 
 The next time the Pipeline runs for the target environment the custom domain and SSL will be added to the App Service.
 
-> If you are adding a custom domain name and SSL to an existing environment you will need to first delete the CDN endpoint for that environment because the CDN origin will need to change to point to the new custom domain name, but for some reason it cannot be updated by the ARM template created by the Bicep scripts.
+> If you are adding a custom domain name and SSL to an existing environment you will need to first delete the CDN endpoint for that environment because the CDN origin will need to change to point to the new custom domain name, but for some reason it cannot be updated by the ARM template created by the Bicep scripts. If you delete the CDN endpoint resource it will be recreated the next time the Pipeline runs for that target environment.
 
 ### Add additional App Settings
 
 Most applications will have specific configuration variables or settings that are typically accessed in Next.js applications through [Environment Variables](https://nextjs.org/docs/basic-features/environment-variables).
 
-App Services provide you with [App Settings](https://docs.microsoft.com/en-us/azure/app-service/configure-common#configure-app-settings), which are (thankfully) exposed as environment variables.
+App Services provide you with [App Settings](https://docs.microsoft.com/en-us/azure/app-service/configure-common#configure-app-settings), which are exposed as environment variables and can be access via `process.env.{var_name}` as normal.
 
 The Pipeline automatically adds a few App Settings that it uses to provide things such as the `buildId` and `assetPrefix` in `next.config.js`, but you can customise the Pipeline to add additional App Settings that your application needs to build and run.
 
@@ -289,7 +292,7 @@ To set up token replacement:
 
 If you are working on a project where there could be multiple pull requests opened from different "feature" branches this could lead to a scenario where you have deployments to your `preview` environment being triggered from multiple branches in a "last one wins" situation.
 
-This is not an ideal situation to be in - a unique deployment for each PR would be preferred, but is not currently supported. Instead you have a few options:
+This is not an ideal situation - a unique deployment for each PR would be preferred, but is not currently supported without your own customisation. Instead you have a few options:
 
 * Put Approvals and checks on the `preview` [Environment](#add-approvals-and-checks-to-an-environment) in Azure DevOps
   * This would allow you to "gate" Pipeline runs branch by branch
@@ -300,18 +303,20 @@ This is not an ideal situation to be in - a unique deployment for each PR would 
 
 ### Change the resource naming conventions
 
-The default resource naming convention used in the Bicep scripts is:
+The default resource naming convention used in the PowerShell and Bicep scripts is:
 
 `{resourcePrefix}-{environment}-{resourceSuffix}`
 
 Where:
 
 * `resourcePrefix` is the value set in the `main.parameters.json.template` file
-* `environment` is the `TargetEnv` variable set in `azure-pipelines.yml`
-  * This isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-the-preview-environment)
+* `environment` is the `EnvironmentName` variable set in the associated Variable Group
+  * The `environment` isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-the-preview-environment)
 * `resourceSuffix` is hardcoded inside the Bicep files and is usually a two to three character string representing the type of resource e.g. `app` for App Service, `cdn` for CDN endpoint
 
 You can edit the Bicep scripts to change this convention if it doesn't suit you or your team.
+
+The same convention is also used in the PowerShell scripts found in `.azure/setup/` so if you change the Bicep files, you will also need to make the same change in the PowerShell files - search for the `Get-NextAzureResourceName` function.
 
 > Feel free to change the names of any resources created outside of the Bicep scripts also, but do a search in your repo to make sure they are not hardcoded anywhere - this shouldn't be the case except for the [Variable Group](#create-variable-groups-in-azure-devops) names because those names have to be hardcoded in the `azure-pipelines.yml`.
 
@@ -334,6 +339,17 @@ const appInsights = useAppInsights()
 ```
 
 You can then call [functions of the telemetry client](https://docs.microsoft.com/en-us/azure/azure-monitor/app/api-custom-events-metrics) on that instance as needed.
+
+### Remove a target environment
+
+If you want to remove one of the environments for your project you can run the following script:
+
+* ` ./.azure/setup/remove-environment.ps1 -Environment {environment_name}`
+  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/add-environment.ps1 -Full`
+
+> Please be aware that if you are using deployment slots and choose to delete your production environment then the deployment slots for all other environments will also be deleted.
+
+You must then alter your `.azure/azure-pipelines.yml` Pipeline to remove any trigger or condition associated with the target environment that has been removed.
 
 ## FAQ
 

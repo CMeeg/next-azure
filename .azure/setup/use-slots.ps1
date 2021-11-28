@@ -66,6 +66,7 @@ if ($Config.Settings.UseDeploymentSlots -and !$Force) {
 
 $ConfigSettings = @{
     UseDeploymentSlots = $true
+    ProductionEnvironment = $ProductionEnvironment
 }
 
 $Config = Set-NextAzureConfig -Config $Config -Settings $ConfigSettings -InformationAction Continue

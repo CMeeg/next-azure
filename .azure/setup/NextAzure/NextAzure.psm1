@@ -272,12 +272,74 @@ function Set-NextAzureEnvironment {
         Write-Line
 
         # Get shared resource group
-        $AzSharedResourceGroup = Get-AzResourceGroup $ResourcePrefix
+        $SharedResourceGroupName = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix
+        $AzSharedResourceGroup = Get-AzResourceGroup -Name $SharedResourceGroupName
 
         $null = Set-NextAzureEnvironmentAppServiceSlot `
         -ResourcePrefix $ResourcePrefix `
         -Environment $Environment `
         -SharedResourceGroupId $AzSharedResourceGroup.id
+    }
+}
+
+function Remove-NextAzureEnvironment {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        $Config,
+        [Parameter(Mandatory=$true)]
+        [string]$Environment
+    )
+
+    $ResourcePrefix = $Config.Settings.ResourcePrefix
+
+    Write-Information "--- Removing '$Environment' environment ---"
+
+    # Remove Variable Group
+
+    Write-Information "Removing Variable Group"
+
+    $null = Remove-AzVariableGroup `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment
+
+    Write-Line
+
+    # Remove Environment
+
+    Write-Information "Removing Environment"
+
+    $null = Remove-AzEnvironment `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment `
+    -OrgUrl $($Config.Settings.OrgUrl) `
+    -ProjectName $($Config.Settings.ProjectName)
+
+    Write-Line
+
+    # Remove Resource Group
+
+    Write-Information "Removing Resource Group"
+
+    $null = Remove-AzResourceGroup `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment
+
+    Write-Line
+
+    # Remove Service Connection
+
+    Write-Information "Removing Service Connection"
+
+    $null = Remove-AzServiceConnection `
+    -ResourcePrefix $ResourcePrefix `
+    -Environment $Environment
+
+    if ($Config.Settings.UseDeploymentSlots -and $Config.Settings.ProductionEnvironment -eq $Environment) {
+        Write-Line
+
+        # Remove shared resource group
+        $null = Remove-AzResourceGroup $ResourcePrefix
     }
 }
 
@@ -376,8 +438,10 @@ function Get-NextAzureEnvironments {
         [string]$ResourcePrefix
     )
 
+    $VariableGroupPrefix = Get-AzVariableGroupResourcePrefix -ResourcePrefix $ResourcePrefix
+
     $Environments = (az pipelines variable-group list `
-    --query "[?starts_with(name, ``$ResourcePrefix-env-vars-``)].variables.EnvironmentName.value" `
+    --query "[?starts_with(name, ``$VariableGroupPrefix-``)].variables.EnvironmentName.value" `
     | ConvertFrom-Json)
 
     return $Environments
@@ -427,11 +491,8 @@ function Get-CurrentAzSubscription {
 function Get-AzResourceGroup {
     param(
         [Parameter(Mandatory=$true)]
-        [string]$ResourcePrefix,
-        [string]$Environment
+        [string]$Name
     )
-
-    $Name = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix -Environment $Environment
 
     $ResourceGroup = (az group show --name $Name | ConvertFrom-Json)
 
@@ -462,6 +523,29 @@ function Set-AzResourceGroup {
     Write-Information "Creating (or updating existing) Resource Group '$Name'"
 
     $ResourceGroup = (az group create --name $Name --location $Location | ConvertFrom-Json)
+
+    return $ResourceGroup
+}
+
+function Remove-AzResourceGroup {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    $Name = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix -Environment $Environment
+
+    $ResourceGroup = Get-AzResourceGroup -Name $Name
+
+    if ($ResourceGroup) {
+        Write-Information "Deleting Resource Group '$Name'"
+
+        $null = (az group delete --name $Name --no-wait --yes)
+    }
+    else {
+        Write-Information "Resource Group '$Name' does not exist - no action taken"
+    }
 
     return $ResourceGroup
 }
@@ -507,6 +591,25 @@ function Set-AzServicePrincipal {
     $VsSpnUrl = 'https://VisualStudio/SPN'
 
     $null = az ad app update --id $ServicePrincipal.appId --reply-urls $VsSpnUrl --homepage $VsSpnUrl
+
+    return $ServicePrincipal
+}
+
+function Remove-AzServicePrincipal {
+    param(
+        [string]$Id
+    )
+
+    $ServicePrincipal = (az ad sp show --id $Id | ConvertFrom-Json)
+
+    if ($ServicePrincipal) {
+        Write-Information "Deleting Service Principal '$($ServicePrincipal.displayName)'"
+
+        $null = (az ad sp delete --id $Id)
+    }
+    else {
+        Write-Information "Service Principal with Id '$Id' not found - no action taken"
+    }
 
     return $ServicePrincipal
 }
@@ -604,6 +707,37 @@ function Set-AzServiceConnection {
     return $ServiceConnection
 }
 
+function Remove-AzServiceConnection {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment
+
+    $ServiceConnection = Get-AzServiceConnection -Name $Name
+
+    if ($ServiceConnection) {
+        Write-Information "Deleting Service Connection '$Name'"
+
+        $null = (az devops service-endpoint delete --id $ServiceConnection.id --yes)
+
+        if ($ServiceConnection.authorization.scheme -eq 'ServicePrincipal') {
+            # We also need to delete this service principal
+
+            $ServicePrincipalId = $ServiceConnection.authorization.parameters.serviceprincipalid
+
+            $null = Remove-AzServicePrincipal -Id $ServicePrincipalId
+        }
+    }
+    else {
+        Write-Information "Service Connection '$Name' not found - no action taken"
+    }
+
+    return $ServiceConnection
+}
+
 function Get-AzEnvironment {
     param(
         [Parameter(Mandatory=$true)]
@@ -689,6 +823,44 @@ function Set-AzEnvironment {
     return $AzEnvironment
 }
 
+function Remove-AzEnvironment {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix,
+        [Parameter(Mandatory=$true)]
+        [string]$Environment,
+        [Parameter(Mandatory=$true)]
+        [string]$OrgUrl,
+        [Parameter(Mandatory=$true)]
+        [string]$ProjectName
+    )
+
+    $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment
+
+    $AzEnvironment = Get-AzEnvironment -Name $Name -Project $ProjectName -Organization $OrgUrl
+
+    if ($AzEnvironment) {
+        Write-Information "Deleting Environment '$Name'"
+
+        # There is no `environment` subcommand so we have to use `invoke`
+        #TODO: This currently fails - raise issue upstream - ERROR: The requested resource does not support http method 'DELETE'. https://github.com/Azure/azure-devops-cli-extension/issues/477#issuecomment-555595672
+        $null = az devops invoke `
+        --area distributedtask `
+        --resource environments `
+        --route-parameters "project=$ProjectName environmentId=$($AzEnvironment.id)" `
+        --org $OrgUrl `
+        --http-method DELETE `
+        --api-version $AzDevOpsApiVersion
+
+        return $AzEnvironment
+    }
+    else {
+        Write-Information "Environment '$Name' not found - no action taken"
+    }
+
+    return $AzEnvironment
+}
+
 function Get-AzVariableGroup {
     param(
         [int]$Id,
@@ -712,6 +884,15 @@ function Get-AzVariableGroup {
     return $null
 }
 
+function Get-AzVariableGroupResourcePrefix {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix
+    )
+
+    return "$ResourcePrefix-env-vars"
+}
+
 function Set-AzVariableGroup {
     param(
         [Parameter(Mandatory=$true)]
@@ -722,7 +903,8 @@ function Set-AzVariableGroup {
         [switch]$UpdateOnly
     )
 
-    $Name = Get-NextAzureResourceName -Prefix "$ResourcePrefix-env-vars" -Environment $Environment
+    $VariableGroupPrefix = Get-AzVariableGroupResourcePrefix -ResourcePrefix $ResourcePrefix
+    $Name = Get-NextAzureResourceName -Prefix $VariableGroupPrefix -Environment $Environment
 
     $VariableGroup = Get-AzVariableGroup -Name $Name
 
@@ -854,6 +1036,32 @@ function Set-AzVariableGroupVariable {
     return $Variable
 }
 
+function Remove-AzVariableGroup {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResourcePrefix,
+        [string]$Environment
+    )
+
+    $VariableGroupPrefix = Get-AzVariableGroupResourcePrefix -ResourcePrefix $ResourcePrefix
+    $Name = Get-NextAzureResourceName -Prefix $VariableGroupPrefix -Environment $Environment
+
+    $VariableGroup = Get-AzVariableGroup -Name $Name
+
+    if ($VariableGroup) {
+        # Delete the Variable Group
+
+        Write-Information "Deleting Variable Group '$Name'"
+
+        $null = (az pipelines variable-group delete --group-id $($VariableGroup.id) --yes)
+    }
+    else {
+        Write-Information "Variable Group '$Name' not found - no action taken"
+    }
+
+    return $VariableGroup
+}
+
 function Write-Line {
     [CmdletBinding()]
     param()
@@ -868,4 +1076,5 @@ Export-ModuleMember -Function Set-NextAzureDefaults
 Export-ModuleMember -Function Set-NextAzureEnvironment
 Export-ModuleMember -Function Set-NextAzureUseAppServiceSlots
 Export-ModuleMember -Function Test-NextAzureEnvironment
+Export-ModuleMember -Function Remove-NextAzureEnvironment
 Export-ModuleMember -Function Write-Line
