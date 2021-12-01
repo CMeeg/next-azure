@@ -8,9 +8,9 @@ Changes have been kept to a minimum, but are enough to get you up and running wi
 
 * PowerShell scripts for quickly creating and tearing down environments
 * An Azure DevOps Pipeline for building and deploying a Next.js app to Azure
-  * The Pipeline will provision the necessary infrastructure for you in Azure as described in the included [Bicep](https://github.com/Azure/bicep) files
+  * The Pipeline will provision the necessary infrastructure for you in Azure using the included [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview) files
 * A Next.js app hosted and running in Azure App Services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration)
-  * Next's [Middleware](https://nextjs.org/docs/middleware) feature is also suported
+  * Next's [Middleware](https://nextjs.org/docs/middleware) feature is also supported
 * A CDN for caching static assets, and [Application Insights](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for application monitoring
 
 > If you only need support for [statically generated pages](https://nextjs.org/docs/advanced-features/static-html-export) via `next export` then check out [Azure Static Web Apps](https://docs.microsoft.com/en-us/azure/static-web-apps/deploy-nextjs) instead.
@@ -61,7 +61,7 @@ The scripts use PowerShell and the Azure CLI so you will need to have the follow
 
 #### Run the Azure initialisation script
 
-The initialisation script will create the necessary resources in Azure and Azure DevOps for two environments, `preview` and `prod` (production), but [more can be added](#add-additional-target-environments).
+The initialisation script will create the necessary resources in Azure and Azure DevOps for two environments, `preview` and `prod` (production), but [this can be changed](#add-additional-target-environments).
 
 To use the initialisation script:
 
@@ -71,17 +71,19 @@ To use the initialisation script:
   * `./.azure/setup/init.ps1 -SubscriptionId {subscription_id} -ResourcePrefix {resource_prefix} -Location {location} -OrgUrl {devops_org_url} -ProjectName {devops_project_name}`
     * To see a full description of the script and its parameters, run `Get-Help .azure/setup/init.ps1 -Full`
 
-> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can edit the PowerShell files to suit your needs - search for the `Get-NextAzureResourceName` function. The same naming convention is used in the Bicep files for resource names - see the [Usage section](#change-the-resource-naming-conventions) for a description of how to change those.
+> The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can [change the naming convention](#change-the-resource-naming-conventions).
 
 > The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
 
 > Three Variable Groups are created by the script - the `{resourcePrefix}-env-vars` Variable Group is used to hold "default" or "shared" values applicable to all target environments, and the `{resourcePrefix}-env-vars-{environment}` Variable Groups hold environment-specific Variables or can override Variables with the same name in the "default" Variable Group.
 
-#### Create the pipeline
+The initialisation script creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation and saves you having to type them out each time. Please commit this file to your repo now and push your changes.
 
-The Pipeline will provision the infrastructure in Azure required to host your app, and build and deploy your application to that infrastructure.
+#### Create the Pipeline
 
-> You will set the Pipeline up manually because you need to be able to authorise the Pipeline to connect to your project's repository, and there are too many options to cover in this example repo. Thankfully setting up the Pipeline manually is pretty painless.
+When the Pipeline runs it will provision the infrastructure in Azure required to host your app for the target environment, and build and deploy your application to that infrastructure.
+
+> You will set the Pipeline up manually because you need to be able to authorise the Pipeline to connect to your project's repository, and it's not practical for this example repo to try to cover all options. Thankfully setting up the Pipeline manually is pretty painless.
 
 To create the Pipeline:
 
@@ -94,9 +96,13 @@ To create the Pipeline:
 
 ### Run the Pipeline
 
-The Pipeline is now ready to run. It can be triggered by pushing commits to your repository.
+The Pipeline is now ready to run. It can be triggered by pushing commits to your repository, which we will now do.
 
-The [Initialisation script](#run-the-azure-initialisation-script) creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation - please commit this to your repo now and push your changes.
+* Edit `.azure/azure-pipelines.yml`
+  * Search for `na-js-env-vars`
+  * Replace all occurrences of the above with `{resourcePrefix}-env-vars` so that these match up with the Variable Group names created by the initialisation script
+    * Where `{resourcePrefix}` matches the `ResourcePrefix` in your `.nextazure.json` file
+* Commit and push your changes
 
 > By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-non-production-environments), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
 
@@ -104,7 +110,7 @@ Create a new pull request from your feature branch to your "main" branch - this 
 
 > You may be required to grant permissions to your Variable Groups the first time the Pipeline runs - keep an eye on the progress of the Pipeline in the Azure DevOps UI.
 
-If you're happy with the `preview` deployment, merge the pull request - this will start a new pipeline run and deploy your app to your `production` environment.
+If you're happy with the `preview` deployment, merge the pull request into your "main" branch - this will start a new pipeline run and deploy your app to your `production` environment.
 
 > You will need to review and approve pipeline runs if you set up [Approvals and checks](#add-approvals-and-checks-to-an-environment) for the Azure DevOps Environment.
 
@@ -139,14 +145,14 @@ If you're familiar with the output of "Create Next App" then you will be mostly 
 
 By default, the Pipeline will deploy your app to a separate App Service per target environment, but it also supports deploying to a single App Service using [deployment slots](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) for each target environment.
 
-Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is an opt-in feature as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots) because there is a cost involved.
+Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is an opt-in feature in this example repo as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots) because there is a cost involved.
 
 > The Pipeline also supports [auto swap](#configure-auto-swap-for-the-production-environment) of deployment slots, which is recommended to setup for your production environment if you choose to use deployment slots.
 
 Assuming you have already run the [initialisation script](#run-the-azure-initialisation-script) you can run the following script to setup deployment slots in your Pipeline:
 
-* ` ./.azure/setup/use-slots.ps1 -ProductionEnvironment {production_environment_name}`
-  * Unless you have customised these scripts, the `{production_environment_name}` is `prod`
+* `./.azure/setup/use-slots.ps1 -ProductionEnvironment {production_environment_name}`
+  * By default, the `{production_environment_name}` is `prod`, but you may have [customised this](#add-additional-target-environments)
   * To see a full description of the script and its parameters, run `Get-Help .azure/setup/use-slots.ps1 -Full`
 
 ### Configure auto swap for the production environment
@@ -160,20 +166,24 @@ Assuming you have already run the [initialisation script](#run-the-azure-initial
 
 Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-non-production-environments) you can modify your setup in the following way to use auto swap for your production environment:
 
-* Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed it):
-  * `next-app-env-vars-prod`
+* Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed your production environment):
+  * `{resourcePrefix}-env-vars-prod`
     * `WebAppSwapSlotName` = `prodswap` (or feel free to name it whatever you like!)
 
 ### Add additional target environments
 
-Depending on your branching and release strategy you may wish to add additional target environments to the Pipeline. For example, if you maintain a long-running `develop` branch that is used for integrating "feature" branches before they are merged into the "main" branch - you may want to deploy merges to `develop` into a `build` environment.
+By default, the initialisation scripts creates two environments: `preview` and `prod` (production). You may wish to give these different names or create more or less environments, which you can do during initialisation; or you may wish to add additional target environments to the Pipeline at a later phase of your project after initialisation.
 
-To add an additional target environment you can run the following script:
+For example, if you maintain a long-running `develop` branch that is used for integrating "feature" branches before they are merged into the "main" branch - you may want to deploy merges to `develop` into a `build` environment.
 
-* ` ./.azure/setup/add-environment.ps1 -Environment {environment_name}`
-  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/add-environment.ps1 -Full`
+* During initialisation
+  * You can specify which environments to create during [initialisation](#run-the-azure-initialisation-script) by using the `Environments` parameter
+  * Run the `Get-Help` cmdlet on the `init.ps1` script for more info
+* After initialisation
+  * Run the script `./.azure/setup/add-environment.ps1 -Environment {environment_name}`
+    * To see a full description of the script and its parameters, run `Get-Help .azure/setup/add-environment.ps1 -Full`
 
-You must then alter your Pipeline to add a trigger and condition for deploying to the new target environment:
+You must then alter your Pipeline to add a trigger and condition for deploying to the new target environment(s):
 
 * Edit `.azure/azure-pipelines.yml`
   * Modify the `trigger` to include the relevant branch
@@ -309,16 +319,18 @@ The default resource naming convention used in the PowerShell and Bicep scripts 
 
 Where:
 
-* `resourcePrefix` is the value set in the `main.parameters.json.template` file
+* `resourcePrefix` is the value set during initialisation and can be found in the `.nextazure.json` file
 * `environment` is the `EnvironmentName` variable set in the associated Variable Group
   * The `environment` isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-non-production-environments)
-* `resourceSuffix` is hardcoded inside the Bicep files and is usually a two to three character string representing the type of resource e.g. `app` for App Service, `cdn` for CDN endpoint
+* `resourceSuffix` is hardcoded inside the Bicep and PowerShell files and is usually a two to three character string representing the type of resource
+  * For example, `app` for App Service, `cdn` for CDN endpoint
 
-You can edit the Bicep scripts to change this convention if it doesn't suit you or your team.
+You can edit the Bicep and PowerShell scripts to change this convention if it doesn't suit you or your team:
 
-The same convention is also used in the PowerShell scripts found in `.azure/setup/` so if you change the Bicep files, you will also need to make the same change in the PowerShell files - search for the `Get-NextAzureResourceName` function.
+* Check the `main.bicep` file; and
+* Search for the `Get-NextAzureResourceName` function in `NextAzure.psm1`
 
-> Feel free to change the names of any resources created outside of the Bicep scripts also, but do a search in your repo to make sure they are not hardcoded anywhere - this shouldn't be the case except for the [Variable Group](#create-variable-groups-in-azure-devops) names because those names have to be hardcoded in the `azure-pipelines.yml`.
+You may also wish to check the Variable Group names referenced `azure-pipelines.yml` because those names have to be hardcoded - search for `-group`.
 
 ### Use the `useApplicationInsights` hook
 
@@ -344,19 +356,23 @@ You can then call [functions of the telemetry client](https://docs.microsoft.com
 
 If you want to remove one of the environments for your project you can run the following script:
 
-* ` ./.azure/setup/remove-environment.ps1 -Environment {environment_name}`
+* `./.azure/setup/remove-environment.ps1 -Environment {environment_name}`
   * To see a full description of the script and its parameters, run `Get-Help .azure/setup/remove-environment.ps1 -Full`
 
 > Please be aware that if you are using deployment slots and choose to delete your production environment then the deployment slots for all other environments will also be deleted.
 
 You must then alter your `.azure/azure-pipelines.yml` Pipeline to remove any trigger or condition associated with the target environment that has been removed.
 
+This script deletes the environment's Resource Group so any resources in that Resource Group will also be deleted when you run this script.
+
 ### Remove all environments
 
 If you want to remove all environments for your project you can run the following script:
 
-* ` ./.azure/setup/teardown.ps1`
+* `./.azure/setup/teardown.ps1`
   * To see a full description of the script and its parameters, run `Get-Help .azure/setup/teardown.ps1 -Full`
+
+This script deletes all associated Resource Groups so any resources in those Resource Groups will also be deleted when you run this script.
 
 ## FAQ
 
@@ -364,9 +380,11 @@ If you have read through the rest of this document and have questions then they 
 
 ### Why would I want to deploy a Next.js app to Azure?
 
-I'm certainly not going to try to say this path is on a par with other more popular options. Having used Vercel and Netlify for deploying and hosting Next.js apps it's certainly not on the same level in terms of simplicity! For me the reason was mostly due to having committed to the Azure platform in terms of other related pieces of infrastructure on the project I was working on in my day job, and having everything hosted on the same provider made things easier in terms of observability and governance.
+I'm not going to try to pretend that proceeding on this path is comparable with other more "usual" options for hosting a Next.js app - just in terms of simplicity Vercel and Netlify would come out on top no problem!
 
-So no sales pitch from me - and I am going to assume that if you're reading this then you already have your reasons for wanting to deploy to Azure - but I can say that deploying Next.js and hosting in Azure has worked out well for me on the projects I have worked on so it's by no means a bad choice!
+There will be no sales pitch from me - I am just going to assume that if you're reading this then you already have your reasons for wanting to deploy to Azure. For me the reason was mostly due to having committed to the Azure platform in terms of other related pieces of infrastructure on the project I was working on in my day job, and having everything hosted on the same provider made things easier in terms of observability and governance.
+
+What I can say is that deploying Next.js and hosting in Azure has worked out well for me on the projects I have worked on so it's by no means a bad choice, and hopefully works out for you too!
 
 ### Should I use App Service deployment slots?
 
@@ -379,19 +397,19 @@ If this is / will be a "dev/test" app or you want to keep costs low then option 
 
 If this is / will be a "production" app then option 2 will be more cost effective in the long run because you pay for only one App Service and the slots "come for free" - currently 5 slots are available on an App Service using the "S1" SKU.
 
-The reason the "Getting started" instructions in this doc don't use slots by default is because it is assumed that if you're only just getting started then you will want to limit costs as far as is possible until you are sure this setup will work for your project, at which point you will probably want to switch to using slots as it is more suitable for production apps.
+The reason the "Getting started" instructions in this doc don't use slots by default is because it is assumed that if you're only just getting started then you will want to limit costs as far as is possible until you are sure this setup will work for your project, at which point you will probably want to switch to using slots as it is more suitable for production apps. I also didn't want to be responsible for people getting unexpected bills!
 
-If you have only just set up your account, or are a Visual Studio subscriber you may have a certain amount of credit, which will negate or limit costs in which case it may just be better to go with slots from the start.
+If you have only just set up your account, or are a Visual Studio subscriber you may have a certain amount of free credit, which will negate or limit costs in which case it may just be better to go with slots from the start.
 
 ### Can I use TypeScript with this example?
 
 Next.js fully supports TypeScript, but the code specific to this example repo is currently not "typed". I do have typed versions of this code in another project that I will bring across to here when I find time.
 
-### Can I use GitHub Actions instead of Azure DevOps pipelines?
+### Can I use GitHub Actions instead of Azure DevOps Pipelines?
 
-I don't see why not, but I haven't "ported" the Pipeline over yet myself. It is on my TODO list for this project, but not particularly high up so hopefully I will find the time at some point.
+I don't see why not, but I haven't "ported" the Pipeline over yet myself. It is on my TODO list for this project, but not particularly high up so hopefully I will find the time at some point. The one thing I'm not really sure about is if there is anything similar to Environments or Variable Groups in GitHub Actions - if not then it might not be so straight-forward.
 
-If you're reading this and think you could take that on then I would appreciate the contribution!
+If you're reading this and think you could take on porting this over to GitHub Actions then I would appreciate the contribution!
 
 ### Why a Windows app service and not Linux?
 
@@ -399,7 +417,7 @@ Linux for the app service should be fine too, but I've not tested this myself - 
 
 ### Why deploy directly to App Services and not use containers?
 
-To be honest it was just what I had more experience with when I started this project, and I haven't tried using containers (yet). The Next.js docs now includes a section on [deploying with Docker containers](https://nextjs.org/docs/deployment#docker-image) so this is something I plan on revisting when I find time.
+To be honest it was just what I had more experience with when I started this project, and I haven't tried using containers (yet). The Next.js docs includes a section on [deploying with Docker containers](https://nextjs.org/docs/deployment#docker-image) so this is something I plan on revisting when I find time. To be honest though it works fine for me as is so this is fairly low on my list currently.
 
 ### Do I have to use Application Insights?
 
@@ -409,7 +427,7 @@ I don't exactly love Application Insights myself, but I figured having some moni
 
 ### Do I need a CDN?
 
-In short, no, but it is recommended for the performance of your app. If you don't want to use a CDN then you can modify the Bicep files and Pipeline to not create the CDN resources in Azure and remove the related code from the app - have a search in the project files for `cdn`.
+In short, no, but it is recommended for the performance of your app. If you don't want to use a CDN or want to use a CDN provided by someone other than Microsoft then you can modify the Bicep files and Pipeline to not create the CDN resources in Azure and remove / change the related code in the app - have a search in the project files for `cdn`.
 
 ### How long does the pipeline take to run?
 
@@ -423,9 +441,9 @@ As mentioned, caching is in place in the pipeline (based on the contents of the 
 
 ### Do I have to use npm, or can I use Yarn, or pnpm?
 
-npm and Yarn v1 (Yarn Classic) will both work equally well.
+npm and Yarn v1 (Yarn Classic) will both work equally well. This repo now references npm (for example, in the pipeline yml), but used to reference Yarn v1 so both are known to work.
 
-npm is being used in the Pipeline because it seems like a sensible default - it is installed alongside node so it's safer to assume people will be using that over Yarn, which requires a separate install.
+npm is being used now because it seems like a sensible default - it is installed alongside node so it's safer to assume people will be using that over Yarn, which requires a separate install.
 
 If you are using Yarn v1 though you can:
 
