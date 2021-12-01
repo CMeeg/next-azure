@@ -108,7 +108,7 @@ The Pipeline is now ready to run. It can be triggered by pushing commits to your
 
 Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment.
 
-> You may be required to grant permissions to your Variable Groups the first time the Pipeline runs - keep an eye on the progress of the Pipeline in the Azure DevOps UI.
+> You may be required to grant permissions to your Variable Groups and/or Environments the first time the Pipeline runs - keep an eye on the progress of the Pipeline in the Azure DevOps UI.
 
 If you're happy with the `preview` deployment, merge the pull request into your "main" branch - this will start a new pipeline run and deploy your app to your `production` environment.
 
