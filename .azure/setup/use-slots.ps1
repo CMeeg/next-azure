@@ -6,9 +6,6 @@ Configures deployment slots for a next-azure project.
 .DESCRIPTION
 Creates a new "shared" Resource Group and updates Service Connections and Variable Groups in Azure and Azure DevOps so that the next-azure deployment Pipeline will use deployment slots.
 
-.PARAMETER ProductionEnvironment
-Name of the environment that should be deployed to the `production` slot i.e. the "main" App Service slot.
-
 .PARAMETER SkuName
 The name of SKU that you want to use for your App Service Plan - `B1` is the minimum Dev/Test SKU, and `S1` is the minimum Production SKU. Defaults to 'S1'.
 
@@ -30,8 +27,6 @@ https://azure.microsoft.com/pricing/calculator/
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$ProductionEnvironment,
     [string]$SkuName = 'S1',
     [switch]$Force
 )
@@ -66,7 +61,6 @@ if ($Config.Settings.UseDeploymentSlots -and !$Force) {
 
 $ConfigSettings = @{
     UseDeploymentSlots = $true
-    ProductionEnvironment = $ProductionEnvironment
 }
 
 $Config = Set-NextAzureConfig -Config $Config -Settings $ConfigSettings -InformationAction Continue
@@ -81,7 +75,6 @@ Write-Line -InformationAction Continue
 
 Set-NextAzureUseAppServiceSlots `
 -Config $Config `
--ProductionEnvironment $ProductionEnvironment `
 -WebAppSkuName $SkuName `
 -InformationAction continue
 

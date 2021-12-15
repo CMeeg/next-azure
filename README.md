@@ -104,7 +104,7 @@ The Pipeline is now ready to run. It can be triggered by pushing commits to your
     * Where `{resourcePrefix}` matches the `ResourcePrefix` in your `.nextazure.json` file
 * Commit and push your changes
 
-> By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-non-production-environments), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
+> By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-pre-production-environments), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
 
 Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment.
 
@@ -141,7 +141,7 @@ If you're familiar with the output of "Create Next App" then you will be mostly 
 
 > If you have an existing Next.js app that you are looking to deploy to Azure you could use the above as a rough guide for where to look for code that you can copy from this example repo to your own project.
 
-### Use a deployment slot for non-production environments
+### Use a deployment slot for pre-production environments
 
 By default, the Pipeline will deploy your app to a separate App Service per target environment, but it also supports deploying to a single App Service using [deployment slots](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) for each target environment.
 
@@ -151,8 +151,7 @@ Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/a
 
 Assuming you have already run the [initialisation script](#run-the-azure-initialisation-script) you can run the following script to setup deployment slots in your Pipeline:
 
-* `./.azure/setup/use-slots.ps1 -ProductionEnvironment {production_environment_name}`
-  * By default, the `{production_environment_name}` is `prod`, but you may have [customised this](#add-additional-target-environments)
+* `./.azure/setup/use-slots.ps1`
   * To see a full description of the script and its parameters, run `Get-Help .azure/setup/use-slots.ps1 -Full`
 
 ### Configure auto swap for the production environment
@@ -164,7 +163,7 @@ Assuming you have already run the [initialisation script](#run-the-azure-initial
 
 > You can configure auto swap for any target deployment slot, but it is most common to use it just for the production environment because typically that's the only environment where the above benefits will really matter, plus it effectively consumes one of your available slots so you wouldn't want to use it for every environment.
 
-Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-non-production-environments) you can modify your setup in the following way to use auto swap for your production environment:
+Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-pre-production-environments) you can modify your setup in the following way to use auto swap for your production environment:
 
 * Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed your production environment):
   * `{resourcePrefix}-env-vars-prod`
@@ -321,7 +320,7 @@ Where:
 
 * `resourcePrefix` is the value set during initialisation and can be found in the `.nextazure.json` file
 * `environment` is the `EnvironmentName` variable set in the associated Variable Group
-  * The `environment` isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-non-production-environments)
+  * The `environment` isn't used in "shared" resource names when using [deployment slots](#use-a-deployment-slot-for-pre-production-environments)
 * `resourceSuffix` is hardcoded inside the Bicep and PowerShell files and is usually a two to three character string representing the type of resource
   * For example, `app` for App Service, `cdn` for CDN endpoint
 

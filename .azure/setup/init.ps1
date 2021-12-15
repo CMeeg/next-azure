@@ -14,8 +14,11 @@ A string that will be used to prefix resource names for this project - it should
 
 Please make sure that there are no existing resources using this same prefix as this could lead to unintended changes.
 
-.PARAMETER Environments
-An array (comma-separated-values) of environment names that you want to create. Defaults to `preview,prod`.
+.PARAMETER ProdEnvironment
+The name of your production environment. Defaults to `prod`.
+
+.PARAMETER PreProdEnvironments
+An array (comma-separated-values) of pre-production environment names that you want to create. Defaults to `preview`.
 
 .PARAMETER Location
 The Location name where you want to deploy your Azure resources e.g. westeurope.
@@ -48,7 +51,8 @@ param(
     [string]$SubscriptionId,
     [Parameter(Mandatory=$true)]
     [string]$ResourcePrefix,
-    [string[]]$Environments = @('preview','prod'),
+    [string]$ProdEnvironment = 'prod',
+    [string[]]$PreProdEnvironments = @('preview'),
     [Parameter(Mandatory=$true)]
     [string]$Location,
     [Parameter(Mandatory=$true)]
@@ -83,6 +87,7 @@ if ($Config -and !$Force) {
 $ConfigSettings = @{
     SubscriptionId = $SubscriptionId
     ResourcePrefix = $ResourcePrefix
+    ProductionEnvironment = $ProdEnvironment
     Location = $Location
     OrgUrl = $OrgUrl
     ProjectName = $ProjectName
@@ -102,9 +107,15 @@ Set-NextAzureDefaults -Config $Config -WebAppSkuName 'F1' -WebAppSkuCapacity 1 -
 
 Write-Line -InformationAction Continue
 
+# Init prod environment
+
+Set-NextAzureEnvironment -Config $Config -Environment $ProdEnvironment -InformationAction Continue
+
+Write-Line -InformationAction Continue
+
 # Init environments
 
-foreach ($Environment in $Environments) {
+foreach ($Environment in $PreProdEnvironments) {
     Set-NextAzureEnvironment -Config $Config -Environment $Environment -InformationAction Continue
 
     Write-Line -InformationAction Continue

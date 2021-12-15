@@ -290,9 +290,11 @@ function Set-NextAzureEnvironment {
         # Get shared resource group
         $SharedResourceGroupName = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix
         $AzSharedResourceGroup = Get-AzResourceGroup -Name $SharedResourceGroupName
+        $ProdEnvironment = $Config.Settings.ProductionEnvironment
 
         $null = Set-NextAzureEnvironmentAppServiceSlot `
         -ResourcePrefix $ResourcePrefix `
+        -ProdEnvironment $ProdEnvironment `
         -Environment $Environment `
         -SharedResourceGroupId $AzSharedResourceGroup.id
     }
@@ -381,8 +383,6 @@ function Set-NextAzureUseAppServiceSlots {
         [Parameter(Mandatory=$true)]
         $Config,
         [Parameter(Mandatory=$true)]
-        [string]$ProductionEnvironment,
-        [Parameter(Mandatory=$true)]
         [string]$WebAppSkuName
     )
 
@@ -411,11 +411,14 @@ function Set-NextAzureUseAppServiceSlots {
 
     # Set existing environments
 
+    $ProdEnvironment = $Config.Settings.ProductionEnvironment
+
     $Environments = Get-NextAzureEnvironments -ResourcePrefix $ResourcePrefix
 
     foreach ($Environment in $Environments) {
         $null = Set-NextAzureEnvironmentAppServiceSlot `
         -ResourcePrefix $ResourcePrefix `
+        -ProdEnvironment $ProdEnvironment `
         -Environment $Environment `
         -SharedResourceGroupId $($AzResourceGroup.id)
 
@@ -427,6 +430,8 @@ function Set-NextAzureEnvironmentAppServiceSlot {
     param(
         [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
+        [Parameter(Mandatory=$true)]
+        [string]$ProdEnvironment,
         [Parameter(Mandatory=$true)]
         [string]$Environment,
         [Parameter(Mandatory=$true)]
@@ -450,7 +455,7 @@ function Set-NextAzureEnvironmentAppServiceSlot {
 
     Write-Information "Setting Variable Group"
 
-    $WebAppSlotName = $Environment -eq $ProductionEnvironment ? 'production' : $Environment
+    $WebAppSlotName = $Environment -eq $ProdEnvironment ? 'production' : $Environment
 
     $Variables = @{
         WebAppSlotName = $WebAppSlotName
