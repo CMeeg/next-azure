@@ -176,7 +176,7 @@ By default, the initialisation scripts creates two environments: `preview` and `
 For example, if you maintain a long-running `develop` branch that is used for integrating "feature" branches before they are merged into the "main" branch - you may want to deploy merges to `develop` into a `build` environment.
 
 * During initialisation
-  * You can specify which environments to create during [initialisation](#run-the-azure-initialisation-script) by using the `Environments` parameter
+  * You can specify which environments to create during [initialisation](#run-the-azure-initialisation-script) by using the `ProdEnvironment` and `PreProdEnvironments` parameters
   * Run the `Get-Help` cmdlet on the `init.ps1` script for more info
 * After initialisation
   * Run the script `./.azure/setup/add-environment.ps1 -Environment {environment_name}`
