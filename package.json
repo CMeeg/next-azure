@@ -14,17 +14,17 @@
     "npm": ">=6.0.0"
   },
   "dependencies": {
-    "@microsoft/applicationinsights-web": "^2.7.1",
-    "applicationinsights": "^2.1.9",
-    "next": "^12.0.4",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "tslib": "^2.3.1"
+    "@microsoft/applicationinsights-web": "^2.8.5",
+    "applicationinsights": "^2.3.3",
+    "next": "^12.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tslib": "^2.4.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.0.0",
-    "eslint": "^7.32.0",
-    "eslint-config-next": "^12.0.4",
-    "typescript": "^4.5.2"
+    "@babel/core": "^7.18.6",
+    "eslint": "^8.19.0",
+    "eslint-config-next": "^12.2.0",
+    "typescript": "^4.7.4"
   }
 }
