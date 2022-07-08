@@ -8,11 +8,10 @@ yarn-error.log*
 
 # next.js
 .next/
+next.config.json
 
 # local env files
-.env
-.env.*
-!.env.template
+.env.local
 
 # build
 .azure/infra/*.parameters.json

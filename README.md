@@ -141,6 +141,20 @@ If you're familiar with the output of "Create Next App" then you will be mostly 
 
 > If you have an existing Next.js app that you are looking to deploy to Azure you could use the above as a rough guide for where to look for code that you can copy from this example repo to your own project.
 
+### Running Docker Compose locally
+
+It can be useful to run Docker Compose locally to test a production build without having to release through the pipeline.
+
+You can review the [Docker Compose docs](https://docs.docker.com/compose/) for basic usage if you're not familiar with the tool, but as a quick start:
+
+* Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (if you haven't already)
+* In a terminal at the root of the repository
+  * Run `docker compose up -d` to start your containers
+    * Or do not use the `-d` switch if you want to run your containers in the foreground to see build and app/service output
+  * Run `docker compose stop` to stop the containers; or
+  * Run `docker compose down` to stop and remove the containers
+* When the containers are running you will be able to browse the app at [`http://localhost:3001/`](http://localhost:3001/)
+
 ### Use a deployment slot for pre-production environments
 
 By default, the Pipeline will deploy your app to a separate App Service per target environment, but it also supports deploying to a single App Service using [deployment slots](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) for each target environment.

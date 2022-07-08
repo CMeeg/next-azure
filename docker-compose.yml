@@ -1,0 +1,16 @@
+version: '3'
+services:
+  nextjs:
+    container_name: nextjs
+    build:
+      context: ./
+    env_file:
+      - ./.env
+      - ./.env.production
+      - ./.env.local
+  nginx:
+    container_name: nginx
+    build:
+      context: ./nginx
+    ports:
+      - 3001:8080

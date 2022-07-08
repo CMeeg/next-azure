@@ -4,10 +4,12 @@
   "license": "MIT",
   "private": true,
   "scripts": {
+    "config:generate": "node ./server/generate-config.js",
     "dev": "next dev",
-    "build": "next build",
-    "start": "node server.js",
-    "lint": "next lint"
+    "build": "npm run config:generate & npm run build:next",
+    "build:next": "next build",
+    "lint": "next lint",
+    "start": "node server.js"
   },
   "engines": {
     "node": ">=12.22.0",
