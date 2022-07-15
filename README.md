@@ -7,11 +7,13 @@ The Next.js app included in this example is the same app created by the default 
 Changes have been kept to a minimum, but are enough to get you up and running with:
 
 * PowerShell scripts for quickly creating and tearing down environments
+  * The scripts will run on Windows, MacOS, or Linux using PowerShell Core
 * An Azure DevOps Pipeline for building and deploying a Next.js app to Azure
   * The Pipeline will provision the necessary infrastructure for you in Azure using the included [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview) files
 * A Next.js app hosted and running in Azure App Services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration) and [middleware](https://nextjs.org/docs/middleware)
   * The app is deployed as a Linux "[Web App for Containers](https://azure.microsoft.com/en-gb/services/app-service/containers/)" using Docker Compose - one container running nginx as a reverse proxy to another container running the Next app
 * A CDN for caching static assets, and [Application Insights](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for application monitoring
+  * The aim is to provide a solid infrastructure ready for production apps
 
 > If you only need support for [statically generated pages](https://nextjs.org/docs/advanced-features/static-html-export) via `next export` then check out [Azure Static Web Apps](https://docs.microsoft.com/en-us/azure/static-web-apps/deploy-nextjs) instead as it may be better suited for your needs.
 
@@ -65,7 +67,7 @@ You will also need to install the following task into your Azure DevOps organisa
 
 #### Run the Azure initialisation script
 
-The initialisation script will create the necessary resources in Azure and Azure DevOps for two environments, `preview` and `prod` (production), but [this can be changed](#add-additional-target-environments).
+The initialisation script will create the necessary resources in Azure and Azure DevOps for two environments, `preview` and `prod` ([additional environments are supported](#add-additional-target-environments)).
 
 To use the initialisation script:
 
@@ -73,15 +75,15 @@ To use the initialisation script:
   * `az login`
 * Run the initialisation script
   * `./.azure/setup/init.ps1 -SubscriptionId {subscription_id} -ResourcePrefix {resource_prefix} -Location {location} -OrgUrl {devops_org_url} -ProjectName {devops_project_name}`
-    * To see a full description of the script and its parameters, run `Get-Help .azure/setup/init.ps1 -Full`
+  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/init.ps1 -Full`
+* Commit and push the generated config file `.nextazure.json`
+  * This config file is used by other scripts in this repo (see the [Usage](#usage) section) and saves you having to type the options provided to the initialisation script out each time
 
 > The name of the Resource Groups is based on a naming convention of `{resourcePrefix}-{environment}-{resourceSuffix}`. If you don't like this you can [change the naming convention](#change-the-resource-naming-conventions).
 
 > The Service Connections created by the script "Grant access to all pipelines", which is done for convenience, but you can choose not to do this and configure specific [pipeline permissions](https://docs.microsoft.com/en-us/azure/devops/pipelines/policies/permissions?view=azure-devops#set-service-connection-permissions) if you wish.
 
 > Three Variable Groups are created by the script - the `{resourcePrefix}-env-vars` Variable Group is used to hold "default" or "shared" values applicable to all target environments, and the `{resourcePrefix}-env-vars-{environment}` Variable Groups hold environment-specific Variables or can override Variables with the same name in the "default" Variable Group.
-
-The initialisation script creates a config file named `.nextazure.json` that is used by other scripts in this repo (see the [Usage](#usage) section) and ensures that these scripts use the same options provided during initialisation and saves you having to type them out each time. Please commit this file to your repo now and push your changes.
 
 #### Create the Pipeline
 
@@ -105,19 +107,18 @@ The Pipeline is now ready to run. It can be triggered by pushing commits to your
 * Edit `.azure/azure-pipelines.yml`
   * Search for `na-js-env-vars`
   * Replace all occurrences of the above with `{resourcePrefix}-env-vars` so that these match up with the Variable Group names created by the initialisation script
-    * Where `{resourcePrefix}` matches the `ResourcePrefix` in your `.nextazure.json` file
+    * Where `{resourcePrefix}` matches the `ResourcePrefix` in your `.nextazure.json` config file
 * Commit and push your changes
 * Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment
+* If you're happy with the `preview` deployment, merge the pull request into your "main" branch - this will start a new pipeline run and deploy your app to your `production` environment
 
 > You may be required to grant permissions to your Variable Groups and/or Environments the first time the Pipeline runs - keep an eye on the progress of the Pipeline in the Azure DevOps UI.
-
-If you're happy with the `preview` deployment, merge the pull request into your "main" branch - this will start a new pipeline run and deploy your app to your `production` environment.
 
 > You will need to review and approve pipeline runs if you set up [Approvals and checks](#add-approvals-and-checks-to-an-environment) for the Azure DevOps Environment.
 
 ✔️ And you're done! Your app will now be deployed to your `preview` environment each time commits are pushed to a PR targeting your "main" branch; and to your `production` environment when commits are pushed to your "main" branch.
 
-> ⚠️ The App Services are configured to use deployment slots, which require a "Standard" or higher service plan and will [cost you money](https://azure.microsoft.com/en-gb/pricing/details/app-service/linux/).
+> ⚠️ The App Services are configured to use deployment slots, which require a "Standard" or higher service plan and will [cost you money](https://azure.microsoft.com/en-gb/pricing/details/app-service/linux/). If you are just trying this out you may want to [remove all of the resources](#remove-all-environments) from your subscription when you're done.
 
 ## Usage
 
@@ -397,7 +398,9 @@ Next.js fully supports TypeScript, but the code specific to this example repo is
 
 ### Can I use GitHub Actions instead of Azure DevOps Pipelines?
 
-I don't see why not, but I haven't "ported" the Pipeline over yet myself. It is on my TODO list for this project, but not particularly high up so hopefully I will find the time at some point. The one thing I'm not really sure about is if there is anything similar to Environments or Variable Groups in GitHub Actions - if not then it might not be so straight-forward.
+I don't see why not, but I haven't "ported" the Pipeline over yet myself. It is on my TODO list for this project, but not particularly high up so hopefully I will find the time at some point.
+
+There are not really equivalents for Azure DevOps Environments or Variable Groups in GitHub Actions though so replacing usage of these features requires a bit of thought.
 
 If you're reading this and think you could take on porting this over to GitHub Actions then I would appreciate the contribution!
 
@@ -415,26 +418,8 @@ In short, no, but it is recommended for the performance of your app. If you don'
 
 It depends on a few factors (e.g. whether the infrastructure resources already exist or need to be created or updated by the pipeline, the size and complexity of your app, the app service plan SKU that you have chosen), but from running this sample a few times it has taken anywhere between 5 - 15 mins to run to completion.
 
-The first time the pipeline runs or after any changes to `package.json` dependencies (anything that causes a change in the `package-lock.json` file) will be the slowest as these runs will not benefit from a `node_modules` cache task present in the pipeline.
-
-There is also a second hit from `npm install` in this case as it runs during the build step in the pipeline, but it also gets executed on the app service because the node server needs access to production node module dependencies. The `node_modules` output from the build step is not deployed with the rest of the build output because a) it includes `devDependencies` that you don't need on the server; and b) deploying `node_modules` from the pipeline to the app service along with the rest of the application files via zip deploy has proven to be much slower than running a production-only `npm install` post-deployment.
-
-As mentioned, caching is in place in the pipeline (based on the contents of the `package-lock.json` file) for subsequent runs, and if no changes have been made to dependencies then the time required to run `npm install` in the pipeline and on the app service is much reduced.
-
 ### Do I have to use npm, or can I use Yarn, or pnpm?
 
-npm and Yarn v1 (Yarn Classic) will both work equally well. This repo now references npm (for example, in the pipeline yml), but used to reference Yarn v1 so both are known to work.
+npm is being used because it seems like a sensible default - it is installed alongside node so it's safer to assume people will be using that over Yarn, which requires a separate install.
 
-npm is being used now because it seems like a sensible default - it is installed alongside node so it's safer to assume people will be using that over Yarn, which requires a separate install.
-
-If you are using Yarn v1 though you can:
-
-* Edit `.azure/azure-pipelines.yml`
-  * Replace references to `package-lock.json` with `yarn.lock`
-  * Replace the `npm` commands with their `yarn` equivalents
-* Edit `.azure/web-app/deploy.cmd`
-  * Reverse the changes made in [this commit](https://github.com/CMeeg/next-azure/commit/9967d3969b51a1f658c4e657cfdf9e6c3309947f#diff-04ffbb94a2cebcdd1803a5a947b790e7e9e756fb01358055242b439125963502L100-L111)
-
-It is possible that other versions of Yarn will work, but I haven't tried anything above v1 so cannot say for sure.
-
-I have tried pnpm but had issues because of limited support for [symlinks](https://github.com/projectkudu/kudu/wiki/Azure-Web-App-sandbox#symbolic-link-creation) within the App Service sandbox and couldn't find a way forward. Please raise an issue if you know a way!
+Yarn or pnpm should work equally well though, but you will need to make some changes both to use locally in development and in the Dockerfile for the production build. Search for `npm` and replace the npm commands with the equivalent Yarn/pnpm commands as appropriate.
