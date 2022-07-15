@@ -59,6 +59,10 @@ The scripts use PowerShell and the Azure CLI so you will need to have the follow
 
 > If you already have them installed it might be a good idea to make sure you have updated to the latest versions.
 
+You will also need to install the following task into your Azure DevOps organisation:
+
+* [Env Transform](https://marketplace.visualstudio.com/items?itemName=joachimdalen.env-transform)
+
 #### Run the Azure initialisation script
 
 The initialisation script will create the necessary resources in Azure and Azure DevOps for two environments, `preview` and `prod` (production), but [this can be changed](#add-additional-target-environments).
