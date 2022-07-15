@@ -103,7 +103,7 @@ Write-Line -InformationAction Continue
 
 # Init defaults
 
-Set-NextAzureDefaults -Config $Config -WebAppSkuName 'B1' -WebAppSkuCapacity 1 -InformationAction Continue
+Set-NextAzureDefaults -Config $Config -WebAppSkuName 'S1' -WebAppSkuCapacity 1 -InformationAction Continue
 
 Write-Line -InformationAction Continue
 

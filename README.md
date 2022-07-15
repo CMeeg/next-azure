@@ -9,11 +9,11 @@ Changes have been kept to a minimum, but are enough to get you up and running wi
 * PowerShell scripts for quickly creating and tearing down environments
 * An Azure DevOps Pipeline for building and deploying a Next.js app to Azure
   * The Pipeline will provision the necessary infrastructure for you in Azure using the included [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview) files
-* A Next.js app hosted and running in Azure App Services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration)
-  * Next's [Middleware](https://nextjs.org/docs/middleware) feature is also supported
+* A Next.js app hosted and running in Azure App Services with full support for SSR and SSG scenarios including [Automatic Static Optimization](https://nextjs.org/docs/advanced-features/automatic-static-optimization), and [Incremental Static Regeneration](https://nextjs.org/docs/basic-features/data-fetching#incremental-static-regeneration) and [middleware](https://nextjs.org/docs/middleware)
+  * The app is deployed as a Linux "[Web App for Containers](https://azure.microsoft.com/en-gb/services/app-service/containers/)" using Docker Compose - one container running nginx as a reverse proxy to another container running the Next app
 * A CDN for caching static assets, and [Application Insights](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) for application monitoring
 
-> If you only need support for [statically generated pages](https://nextjs.org/docs/advanced-features/static-html-export) via `next export` then check out [Azure Static Web Apps](https://docs.microsoft.com/en-us/azure/static-web-apps/deploy-nextjs) instead.
+> If you only need support for [statically generated pages](https://nextjs.org/docs/advanced-features/static-html-export) via `next export` then check out [Azure Static Web Apps](https://docs.microsoft.com/en-us/azure/static-web-apps/deploy-nextjs) instead as it may be better suited for your needs.
 
 ## Getting started
 
@@ -103,10 +103,7 @@ The Pipeline is now ready to run. It can be triggered by pushing commits to your
   * Replace all occurrences of the above with `{resourcePrefix}-env-vars` so that these match up with the Variable Group names created by the initialisation script
     * Where `{resourcePrefix}` matches the `ResourcePrefix` in your `.nextazure.json` file
 * Commit and push your changes
-
-> By default the pipeline will deploy your app into separate App Services for the `preview` and `production` environments - you may want to take a look at the [Usage section](#usage) before proceeding to see what other options there are, such as [using deployment slots](#use-a-deployment-slot-for-pre-production-environments), or [adding a custom domain and SSL](#add-custom-domain-name-and-ssl).
-
-Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment.
+* Create a new pull request from your feature branch to your "main" branch - this will start a new pipeline run and deploy your app to your `preview` environment
 
 > You may be required to grant permissions to your Variable Groups and/or Environments the first time the Pipeline runs - keep an eye on the progress of the Pipeline in the Azure DevOps UI.
 
@@ -116,9 +113,24 @@ If you're happy with the `preview` deployment, merge the pull request into your 
 
 ✔️ And you're done! Your app will now be deployed to your `preview` environment each time commits are pushed to a PR targeting your "main" branch; and to your `production` environment when commits are pushed to your "main" branch.
 
+> ⚠️ The App Services are configured to use deployment slots, which require a "Standard" or higher service plan and will [cost you money](https://azure.microsoft.com/en-gb/pricing/details/app-service/linux/).
+
 ## Usage
 
 Please read through the below sections to familiarise yourself with the additional features provided by the app in this example repo and options for customising the pipeline.
+
+* [Orientation](#orientation)
+* [Running Docker Compose locally](#running-docker-compose-locally)
+* [Add additional target environments](#add-additional-target-environments)
+* [Add Approvals and Checks to an Environment](#add-approvals-and-checks-to-an-environment)
+* [Add custom domain name and SSL](#add-custom-domain-name-and-ssl)
+* [Add DNS records](#add-dns-records)
+* [Add additional App Settings](#add-additional-app-settings)
+* [Prevent automatic deploy to the `preview` environment](#prevent-automatic-deploy-to-the-preview-environment)
+* [Change the resource naming conventions](#change-the-resource-naming-conventions)
+* [Use the `useApplicationInsights` hook](#use-the-useapplicationinsights-hook)
+* [Remove a target environment](#remove-a-target-environment)
+* [Remove all environments](#remove-all-environments)
 
 ### Orientation
 
@@ -130,14 +142,18 @@ If you're familiar with the output of "Create Next App" then you will be mostly 
   * Components used to render the [Application Insights JavaScript SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/javascript) for client-side monitoring
 * `lib/env.js`
   * Constants and functions that can be used for getting absolute URLs and CDN URLs for the current environment
+* `nginx/`
+  * Config for the nginx reverse proxy used in production builds - this can be modified to suit your needs such as adding redirect or rewrite rules for your app
 * `pages/_app.js`
   * A [custom `App`](https://nextjs.org/docs/advanced-features/custom-app) component that includes the Application Insights context provider that is used by the `useApplicationInsights` hook that can be [used](#use-the-useapplicationinsights-hook) in your app's components
+* `Dockerfile`
+  * This is the Dockerfile for the production Next app build
 * `.env.template`
   * This shows all of the environment variables that can be used with this application - though none of these are required in development and are set by the Pipeline for use in Azure
 * `next.config.js`
   * The configuration values provided by environment variables are required to be set when deployed in Azure (and are provided by the build pipeline)
 * `server.js`
-  * Requests to the App Service are routed through to this [custom server](https://nextjs.org/docs/advanced-features/custom-server) implementation - it ultimately passes requests through to the default server provided by Next.js, but it ensures requests are passed on the correct port and also includes calls to the [Application Insights Node SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/nodejs) for server-side monitoring
+  * Requests to the App Service are routed through to this [custom server](https://nextjs.org/docs/advanced-features/custom-server) implementation - it ultimately passes requests through to Next.js, but it ensures requests are passed on the correct port and also includes calls to the [Application Insights Node SDK](https://docs.microsoft.com/en-us/azure/azure-monitor/app/nodejs) for server-side monitoring
 
 > If you have an existing Next.js app that you are looking to deploy to Azure you could use the above as a rough guide for where to look for code that you can copy from this example repo to your own project.
 
@@ -154,34 +170,6 @@ You can review the [Docker Compose docs](https://docs.docker.com/compose/) for b
   * Run `docker compose stop` to stop the containers; or
   * Run `docker compose down` to stop and remove the containers
 * When the containers are running you will be able to browse the app at [`http://localhost:3001/`](http://localhost:3001/)
-
-### Use a deployment slot for pre-production environments
-
-By default, the Pipeline will deploy your app to a separate App Service per target environment, but it also supports deploying to a single App Service using [deployment slots](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots) for each target environment.
-
-Using deployment slots is the [preferred way](https://docs.microsoft.com/en-us/azure/app-service/deploy-best-practices#use-deployment-slots) to approach deploying to multiple environments for a single application, but is an opt-in feature in this example repo as it requires you to make [an informed decision](#should-i-use-app-service-deployment-slots) because there is a cost involved.
-
-> The Pipeline also supports [auto swap](#configure-auto-swap-for-the-production-environment) of deployment slots, which is recommended to setup for your production environment if you choose to use deployment slots.
-
-Assuming you have already run the [initialisation script](#run-the-azure-initialisation-script) you can run the following script to setup deployment slots in your Pipeline:
-
-* `./.azure/setup/use-slots.ps1`
-  * To see a full description of the script and its parameters, run `Get-Help .azure/setup/use-slots.ps1 -Full`
-
-### Configure auto swap for the production environment
-
-[Auto swap](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#configure-auto-swap) involves deploying the app to a "source" deployment slot that automatically swaps to a "target" deployment slot. It is useful because it:
-
-* Minimises downtime - the app will be "[warmed up](https://docs.microsoft.com/en-us/azure/app-service/deploy-staging-slots#specify-custom-warm-up)" in the source slot before it is swapped with the target slot
-* Enables easy rollback - if there is an issue post-deployment and you require rollback you can swap the target slot with the source slot (that now holds the previous version of your app)
-
-> You can configure auto swap for any target deployment slot, but it is most common to use it just for the production environment because typically that's the only environment where the above benefits will really matter, plus it effectively consumes one of your available slots so you wouldn't want to use it for every environment.
-
-Assuming you have already setup [deployment slots](#use-a-deployment-slot-for-pre-production-environments) you can modify your setup in the following way to use auto swap for your production environment:
-
-* Go to Pipelines > Library in your Azure DevOps project, and edit the following Variable Group (or equivalent if you have renamed your production environment):
-  * `{resourcePrefix}-env-vars-prod`
-    * `WebAppSwapSlotName` = `prodswap` (or feel free to name it whatever you like!)
 
 ### Add additional target environments
 
@@ -399,21 +387,6 @@ There will be no sales pitch from me - I am just going to assume that if you're 
 
 What I can say is that deploying Next.js and hosting in Azure has worked out well for me on the projects I have worked on so it's by no means a bad choice, and hopefully works out for you too!
 
-### Should I use App Service deployment slots?
-
-The Pipeline included in the example repo has support for deploying the Next.js app into:
-
-1. One App Service per target environment (i.e. multiple App Services)
-2. One App Service with one deployment slot per target environment (i.e. one App Service total)
-
-If this is / will be a "dev/test" app or you want to keep costs low then option 1 should be fine, but bear in mind that the "F" (free) and "D" (relatively cheap) App Service SKUs are quite limited in their capabilities.
-
-If this is / will be a "production" app then option 2 will be more cost effective in the long run because you pay for only one App Service and the slots "come for free" - currently 5 slots are available on an App Service using the "S1" SKU.
-
-The reason the "Getting started" instructions in this doc don't use slots by default is because it is assumed that if you're only just getting started then you will want to limit costs as far as is possible until you are sure this setup will work for your project, at which point you will probably want to switch to using slots as it is more suitable for production apps. I also didn't want to be responsible for people getting unexpected bills!
-
-If you have only just set up your account, or are a Visual Studio subscriber you may have a certain amount of free credit, which will negate or limit costs in which case it may just be better to go with slots from the start.
-
 ### Can I use TypeScript with this example?
 
 Next.js fully supports TypeScript, but the code specific to this example repo is currently not "typed". I do have typed versions of this code in another project that I will bring across to here when I find time.
@@ -423,14 +396,6 @@ Next.js fully supports TypeScript, but the code specific to this example repo is
 I don't see why not, but I haven't "ported" the Pipeline over yet myself. It is on my TODO list for this project, but not particularly high up so hopefully I will find the time at some point. The one thing I'm not really sure about is if there is anything similar to Environments or Variable Groups in GitHub Actions - if not then it might not be so straight-forward.
 
 If you're reading this and think you could take on porting this over to GitHub Actions then I would appreciate the contribution!
-
-### Why a Windows app service and not Linux?
-
-Linux for the app service should be fine too, but I've not tested this myself - feel free to change to Linux if you prefer, but consider the [limitations](https://docs.microsoft.com/en-us/azure/app-service/overview#limitations) if you have not already.
-
-### Why deploy directly to App Services and not use containers?
-
-To be honest it was just what I had more experience with when I started this project, and I haven't tried using containers (yet). The Next.js docs includes a section on [deploying with Docker containers](https://nextjs.org/docs/deployment#docker-image) so this is something I plan on revisting when I find time. To be honest though it works fine for me as is so this is fairly low on my list currently.
 
 ### Do I have to use Application Insights?
 
