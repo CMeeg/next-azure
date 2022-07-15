@@ -8,16 +8,15 @@ const AppInsightsSdk = dynamic(() => import('./Sdk'), {
 })
 
 const AppInsightsContextProvider = ({ children }) => {
-  const instrumentationKey =
-    process.env.NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY
+  const connectionString = process.env.NEXT_PUBLIC_APPINSIGHTS_CONNECTION_STRING
 
   const [instance, setInstance] = useState(null)
 
   return (
     <AppInsightsContext.Provider value={instance}>
-      {instrumentationKey && (
+      {connectionString && (
         <AppInsightsSdk
-          instrumentationKey={instrumentationKey}
+          connectionString={connectionString}
           instance={instance}
           setInstance={setInstance}
         />
