@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { ApplicationInsights } from '@microsoft/applicationinsights-web'
 
 export default function AppInsightsSdk({
-  instrumentationKey,
+  connectionString,
   instance,
   setInstance
 }) {
@@ -13,8 +13,8 @@ export default function AppInsightsSdk({
       return
     }
 
-    if (!instrumentationKey) {
-      // If we have no key then we can't load app insights
+    if (!connectionString) {
+      // If we have no connection string then we can't load app insights
 
       return
     }
@@ -23,7 +23,7 @@ export default function AppInsightsSdk({
 
     const appInsights = new ApplicationInsights({
       config: {
-        instrumentationKey,
+        connectionString,
         enableAutoRouteTracking: true
       }
     })
@@ -37,7 +37,7 @@ export default function AppInsightsSdk({
     // app insights has loaded
 
     setInstance(appInsights)
-  }, [instance, instrumentationKey, setInstance])
+  }, [instance, connectionString, setInstance])
 
   return <></>
 }

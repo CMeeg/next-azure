@@ -58,15 +58,15 @@ if ($Confirmation -ne 'y') {
 
 Write-Line -InformationAction Continue
 
-# Remove defaults
-
-$null = Remove-NextAzureDefaults -Config $Config -InformationAction Continue
-
-Write-Line -InformationAction Continue
-
 # Remove environments
 
 $null = Remove-AllNextAzureEnvironments -Config $Config -InformationAction Continue
+
+Write-Line -InformationAction Continue
+
+# Remove defaults
+
+$null = Remove-NextAzureDefaults -Config $Config -InformationAction Continue
 
 Write-Information "`u{2714}`u{FE0F} Done"
 
