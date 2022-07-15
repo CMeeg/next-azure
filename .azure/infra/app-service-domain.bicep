@@ -14,10 +14,10 @@ param keyVaultId string
 
 param keyVaultName string
 
-// "production" is the name of the "default" slot - essentially it means "no slot"
-var isSlotDeploy = slotName != 'production'
+var isProductionDeploy = empty(slotName)
+var isSlotDeploy = !isProductionDeploy
 
-resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' =  {
+resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' = {
   name: '${keyVaultName}-${certName}'
   location: location
   properties: {
@@ -27,7 +27,7 @@ resource appServiceCertificate 'Microsoft.Web/certificates@2020-12-01' =  {
   }
 }
 
-resource appServiceHostName 'Microsoft.Web/sites/hostNameBindings@2020-12-01' = if(!isSlotDeploy) {
+resource appServiceHostName 'Microsoft.Web/sites/hostNameBindings@2020-12-01' = if(isProductionDeploy) {
   name: '${appServiceName}/${domainName}'
   properties: {
     sslState: 'SniEnabled'
@@ -36,7 +36,7 @@ resource appServiceHostName 'Microsoft.Web/sites/hostNameBindings@2020-12-01' = 
 }
 
 resource appServiceSlotHostName 'Microsoft.Web/sites/slots/hostNameBindings@2020-12-01' = if(isSlotDeploy) {
-  name: '${appServiceName}/${slotName}/${domainName}'
+  name: '${appServiceName}/${empty(slotName) ? 'undefined' : slotName}/${domainName}'
   properties: {
     sslState: 'SniEnabled'
     thumbprint: appServiceCertificate.properties.thumbprint

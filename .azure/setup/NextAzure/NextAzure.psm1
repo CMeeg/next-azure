@@ -311,7 +311,7 @@ function Set-NextAzureEnvironment {
 
     $ProdEnvironment = $Config.Settings.ProdEnvironment
 
-    $WebAppSlotName = $Environment -eq $ProdEnvironment ? 'production' : $Environment
+    $WebAppSlotName = $Environment -eq $ProdEnvironment ? '' : $Environment
 
     $Variables = @{
         EnvironmentName = $Environment

@@ -14,11 +14,7 @@ param containerRegistryName string
 
 param containerRegistrySkuName string = 'Basic'
 
-var productionSlotName = 'production'
-
-var isProductionDeploy = slotName == productionSlotName
-
-// "production" is the name of the "default" slot - essentially it means "no slot"
+var isProductionDeploy = empty(slotName)
 var isSlotDeploy = !isProductionDeploy
 
 var minTlsVersion = '1.2'
@@ -67,8 +63,9 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
   }
 }
 
+// N.B. This 'undefined' value is used here only because without it a "What-If" deployment fails - it shouldn't ever actually be used because if `slotName` is empty, `isSlotDeploy` will be `false`
 resource appServiceSlot 'Microsoft.Web/sites/slots@2020-12-01' = if(isSlotDeploy) {
-  name: '${appService.name}/${slotName}'
+  name: '${appService.name}/${empty(slotName) ? 'undefined' : slotName}'
   location: location
   kind: 'app,linux,container'
   identity: {
@@ -101,19 +98,9 @@ var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/ro
 
 resource appServiceAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-10-01-preview' = {
   scope: containerRegistry
-  name: guid(containerRegistry.id, appService.id, acrPullRoleDefinitionId)
+  name: isSlotDeploy ? guid(containerRegistry.id, appServiceSlot.id, acrPullRoleDefinitionId) : guid(containerRegistry.id, appService.id, acrPullRoleDefinitionId)
   properties: {
-    principalId: appService.identity.principalId
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource appServiceSlotAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-10-01-preview' = if(isSlotDeploy) {
-  scope: containerRegistry
-  name: guid(containerRegistry.id, appServiceSlot.id, acrPullRoleDefinitionId)
-  properties: {
-    principalId: appServiceSlot.identity.principalId
+    principalId: isSlotDeploy ? appServiceSlot.identity.principalId : appService.identity.principalId
     roleDefinitionId: acrPullRoleDefinitionId
     principalType: 'ServicePrincipal'
   }
