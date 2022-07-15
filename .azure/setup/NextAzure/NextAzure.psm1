@@ -1,5 +1,6 @@
 $NextAzureConfigFileName = '.nextazure.json'
 $AzDevOpsApiVersion = '6.0-preview'
+$ContributorWithRbacRoleName = 'ContributorWithRBAC'
 
 function Get-NextAzureConfig {
     [CmdletBinding()]
@@ -170,9 +171,9 @@ function Set-NextAzureDefaults {
         [int]$WebAppSkuCapacity = 1
     )
 
-    # Set Variable Group
-
     Write-Information "--- Setting up defaults ---"
+
+    # Set Variable Group
 
     Write-Information "Setting Variable Group"
 
@@ -185,6 +186,16 @@ function Set-NextAzureDefaults {
     }
 
     $null = Set-AzVariableGroup -ResourcePrefix $ResourcePrefix -Variables $Variables
+
+    Write-Line
+
+    # Set `ContributorWithRBAC` role
+
+    Write-Information "Setting '$ContributorWithRbacRoleName' role"
+
+    $SubscriptionId = $Config.Settings.SubscriptionId
+
+    $null = Set-ContributorWithRbacRole -SubscriptionId $SubscriptionId
 }
 
 function Remove-NextAzureDefaults {
@@ -200,7 +211,19 @@ function Remove-NextAzureDefaults {
 
     Write-Information "Removing Variable Group"
 
-    $null = Remove-AzVariableGroup -ResourcePrefix $($Config.Settings.ResourcePrefix)
+    $ResourcePrefix = $Config.Settings.ResourcePrefix
+
+    $null = Remove-AzVariableGroup -ResourcePrefix $ResourcePrefix
+
+    Write-Line
+
+    # Remove `ContributorWithRBAC` role
+
+    Write-Information "Removing '$ContributorWithRbacRoleName' role"
+
+    $SubscriptionId = $Config.Settings.SubscriptionId
+
+    $null = Remove-ContributorWithRbacRole -SubscriptionId $SubscriptionId
 }
 
 function Set-NextAzureEnvironment {
@@ -212,6 +235,8 @@ function Set-NextAzureEnvironment {
         [string]$Environment
     )
 
+    $SubscriptionId = $Config.Settings.SubscriptionId
+
     $ResourcePrefix = $Config.Settings.ResourcePrefix
 
     Write-Information "--- Setting up '$Environment' environment ---"
@@ -221,6 +246,7 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Resource Group"
 
     $AzResourceGroup = Set-AzResourceGroup `
+    -SubscriptionId $SubscriptionId `
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment `
     -Location $($Config.Settings.Location)
@@ -232,12 +258,13 @@ function Set-NextAzureEnvironment {
     Write-Information "Setting Service Connection"
 
     $AzServiceConnection = Set-AzServiceConnection `
+    -SubscriptionId $SubscriptionId `
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
     Write-Line
 
-    # Give `Contributor` access to Service Connection Principal on the Resource Group
+    # Give `ContributorWithRBAC` access to Service Connection Principal on the Resource Group
 
     Write-Information "Setting Role Assignment on Resource Group for Service Connection"
 
@@ -245,9 +272,11 @@ function Set-NextAzureEnvironment {
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
+    $Role = Get-ContributorWithRbacRole -SubscriptionId $SubscriptionId
+
     $null = Set-AzRoleAssignment `
-    -Role 'Contributor' `
-    -Assignee $AzServicePrincipal.objectId `
+    -Role $Role.roleName `
+    -Assignee $AzServicePrincipal.id `
     -Scope $AzResourceGroup.id
 
     Write-Line
@@ -276,7 +305,6 @@ function Set-NextAzureEnvironment {
         WebAppCertName = ''
         WebAppDomainName = ''
         WebAppSlotName = ''
-        WebAppSwapSlotName = ''
     }
 
     $null = Set-AzVariableGroup `
@@ -287,12 +315,17 @@ function Set-NextAzureEnvironment {
     if ($Config.Settings.UseDeploymentSlots) {
         Write-Line
 
+        $ProdEnvironment = $Config.Settings.ProdEnvironment
+
         # Get shared resource group
         $SharedResourceGroupName = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix
-        $AzSharedResourceGroup = Get-AzResourceGroup -Name $SharedResourceGroupName
-        $ProdEnvironment = $Config.Settings.ProductionEnvironment
+
+        $AzSharedResourceGroup = Get-AzResourceGroup `
+        -SubscriptionId $SubscriptionId `
+        -Name $SharedResourceGroupName
 
         $null = Set-NextAzureEnvironmentAppServiceSlot `
+        -SubscriptionId $SubscriptionId `
         -ResourcePrefix $ResourcePrefix `
         -ProdEnvironment $ProdEnvironment `
         -Environment $Environment `
@@ -308,6 +341,8 @@ function Remove-NextAzureEnvironment {
         [Parameter(Mandatory=$true)]
         [string]$Environment
     )
+
+    $SubscriptionId = $Config.Settings.SubscriptionId
 
     $ResourcePrefix = $Config.Settings.ResourcePrefix
 
@@ -340,6 +375,7 @@ function Remove-NextAzureEnvironment {
     Write-Information "Removing Resource Group"
 
     $null = Remove-AzResourceGroup `
+    -SubscriptionId $SubscriptionId `
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
@@ -350,14 +386,17 @@ function Remove-NextAzureEnvironment {
     Write-Information "Removing Service Connection"
 
     $null = Remove-AzServiceConnection `
+    -SubscriptionId $SubscriptionId `
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
-    if ($Config.Settings.UseDeploymentSlots -and $Config.Settings.ProductionEnvironment -eq $Environment) {
+    if ($Config.Settings.UseDeploymentSlots -and $Config.Settings.ProdEnvironment -eq $Environment) {
         Write-Line
 
-        # Remove shared resource group
-        $null = Remove-AzResourceGroup $ResourcePrefix
+        Write-Information "Removing shared Resource Group"
+
+        # Remove shared Resource Group
+        $null = Remove-AzResourceGroup -SubscriptionId $SubscriptionId -ResourcePrefix $ResourcePrefix
     }
 }
 
@@ -386,6 +425,8 @@ function Set-NextAzureUseAppServiceSlots {
         [string]$WebAppSkuName
     )
 
+    $SubscriptionId = $Config.Settings.SubscriptionId
+
     $ResourcePrefix = $Config.Settings.ResourcePrefix
 
     Write-Information "--- Setting up deployment slots ---"
@@ -393,6 +434,7 @@ function Set-NextAzureUseAppServiceSlots {
     Write-Information "Setting shared Resource Group"
 
     $AzResourceGroup = Set-AzResourceGroup `
+    -SubscriptionId $SubscriptionId `
     -ResourcePrefix $ResourcePrefix `
     -Location $($Config.Settings.Location)
 
@@ -411,12 +453,13 @@ function Set-NextAzureUseAppServiceSlots {
 
     # Set existing environments
 
-    $ProdEnvironment = $Config.Settings.ProductionEnvironment
+    $ProdEnvironment = $Config.Settings.ProdEnvironment
 
     $Environments = Get-NextAzureEnvironments -ResourcePrefix $ResourcePrefix
 
     foreach ($Environment in $Environments) {
         $null = Set-NextAzureEnvironmentAppServiceSlot `
+        -SubscriptionId $SubscriptionId `
         -ResourcePrefix $ResourcePrefix `
         -ProdEnvironment $ProdEnvironment `
         -Environment $Environment `
@@ -428,6 +471,8 @@ function Set-NextAzureUseAppServiceSlots {
 
 function Set-NextAzureEnvironmentAppServiceSlot {
     param(
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
         [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [Parameter(Mandatory=$true)]
@@ -446,9 +491,11 @@ function Set-NextAzureEnvironmentAppServiceSlot {
     -ResourcePrefix $ResourcePrefix `
     -Environment $Environment
 
+    $Role = Get-ContributorWithRbacRole -SubscriptionId $SubscriptionId
+
     $null = Set-AzRoleAssignment `
-    -Role 'Contributor' `
-    -Assignee $AzServicePrincipal.objectId `
+    -Role $Role.roleName `
+    -Assignee $AzServicePrincipal.id `
     -Scope $SharedResourceGroupId
 
     Write-Line
@@ -525,13 +572,25 @@ function Get-CurrentAzSubscription {
     return $Subscription
 }
 
+function Get-AzSubscription {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId
+    )
+    $Subscription = (az account show --subscription $SubscriptionId | ConvertFrom-Json)
+
+    return $Subscription
+}
+
 function Get-AzResourceGroup {
     param(
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
         [Parameter(Mandatory=$true)]
         [string]$Name
     )
 
-    $ResourceGroup = (az group show --name $Name | ConvertFrom-Json)
+    $ResourceGroup = (az group show --name $Name --subscription $SubscriptionId | ConvertFrom-Json)
 
     return $ResourceGroup
 }
@@ -549,6 +608,8 @@ function Get-AzResourceGroupName {
 function Set-AzResourceGroup {
     param(
         [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment,
         [Parameter(Mandatory=$true)]
@@ -559,7 +620,7 @@ function Set-AzResourceGroup {
 
     Write-Information "Creating (or updating existing) Resource Group '$Name'"
 
-    $ResourceGroup = (az group create --name $Name --location $Location | ConvertFrom-Json)
+    $ResourceGroup = (az group create --name $Name --location $Location --subscription $SubscriptionId | ConvertFrom-Json)
 
     return $ResourceGroup
 }
@@ -567,24 +628,103 @@ function Set-AzResourceGroup {
 function Remove-AzResourceGroup {
     param(
         [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
 
     $Name = Get-AzResourceGroupName -ResourcePrefix $ResourcePrefix -Environment $Environment
 
-    $ResourceGroup = Get-AzResourceGroup -Name $Name
+    $ResourceGroup = Get-AzResourceGroup -SubscriptionId $SubscriptionId -Name $Name
 
     if ($ResourceGroup) {
         Write-Information "Deleting Resource Group '$Name'"
 
-        $null = (az group delete --name $Name --no-wait --yes)
+        $null = (az group delete --name $Name --subscription $SubscriptionId --no-wait --yes)
     }
     else {
         Write-Information "Resource Group '$Name' does not exist - no action taken"
     }
 
     return $ResourceGroup
+}
+
+function Get-AzRole {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Scope,
+        [Parameter(Mandatory=$true)]
+        [string]$RoleName
+    )
+
+    $Role = (az role definition list --name $RoleName --scope $Scope --query '[0]' | ConvertFrom-Json)
+
+    return $Role
+}
+
+function Get-ContributorWithRbacRole {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId
+    )
+
+    $Scope = "/subscriptions/$SubscriptionId"
+
+    $Role = Get-AzRole -Scope $Scope -RoleName $ContributorWithRbacRoleName
+
+    return $Role
+}
+
+function Set-ContributorWithRbacRole {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId
+    )
+
+    $Scope = "/subscriptions/$SubscriptionId"
+
+    $Role = Get-AzRole -Scope $Scope -RoleName $ContributorWithRbacRoleName
+
+    if ($Role) {
+        # If the Role already exists there is nothing more to do
+
+        Write-Information "Role '$ContributorWithRbacRoleName' already exists - no action taken"
+
+        return $Role
+    }
+
+    Write-Information "Creating Role '$ContributorWithRbacRoleName'"
+
+    # We need to build this json string dynamically, but there are some gotchas, which is why it is like it is below...
+    # See https://github.com/Azure/azure-cli/issues/16940#issuecomment-782546983
+    $RoleDefinition = '{\"Name\": \"'+$ContributorWithRbacRoleName+'\", \"Description\": \"Same as built-in Contributor role, but allows you to assign roles in Azure RBAC.\", \"Actions\": [\"*\"], \"NotActions\": [\"Microsoft.Authorization/*/Delete\", \"Microsoft.Authorization/elevateAccess/Action\", \"Microsoft.Blueprint/blueprintAssignments/write\", \"Microsoft.Blueprint/blueprintAssignments/delete\", \"Microsoft.Compute/galleries/share/action\"], \"DataActions\": [], \"NotDataActions\": [], \"AssignableScopes\": [\"'+$Scope+'\"]}'
+
+    $Role = (az role definition create --role-definition "$RoleDefinition" | ConvertFrom-Json)
+
+    return $Role
+}
+
+function Remove-ContributorWithRbacRole {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId
+    )
+
+    $Scope = "/subscriptions/$SubscriptionId"
+
+    $Role = Get-AzRole -Scope $Scope -RoleName $ContributorWithRbacRoleName
+
+    if ($Role) {
+        Write-Information "Deleting Role '$($ContributorWithRbacRoleName)'"
+
+        $null = (az role definition delete --name $ContributorWithRbacRoleName --scope $Scope)
+    }
+    else {
+        Write-Information "Role '$ContributorWithRbacRoleName' not found - no action taken"
+    }
+
+    return $Role
 }
 
 function Get-AzServicePrincipal {
@@ -622,7 +762,7 @@ function Set-AzServicePrincipal {
 
     Write-Information "Creating (or updating existing) Service Principal '$Name'"
 
-    $ServicePrincipal = (az ad sp create-for-rbac --name $Name  --skip-assignment | ConvertFrom-Json)
+    $ServicePrincipal = (az ad sp create-for-rbac --name $Name --skip-assignment | ConvertFrom-Json)
 
     # We need to update the Service Prinipal to add SPN auth, but we suppress the output
     $VsSpnUrl = 'https://VisualStudio/SPN'
@@ -675,10 +815,12 @@ function Set-AzRoleAssignment {
 function Get-AzServiceConnection {
     param(
         [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory=$true)]
         [string]$Name
     )
 
-    $ServiceConnection = (az devops service-endpoint list --query "[?name == '$Name'] | [0]" | ConvertFrom-Json)
+    $ServiceConnection = (az devops service-endpoint list --subscription $SubscriptionId --query "[?name == '$Name'] | [0]" | ConvertFrom-Json)
 
     return $ServiceConnection
 }
@@ -686,13 +828,15 @@ function Get-AzServiceConnection {
 function Set-AzServiceConnection {
     param(
         [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
 
     $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment
 
-    $ServiceConnection = Get-AzServiceConnection -Name $Name
+    $ServiceConnection = Get-AzServiceConnection -SubscriptionId $SubscriptionId -Name $Name
 
     if ($ServiceConnection) {
         # If the Service Connection already exists there is nothing more to do
@@ -714,8 +858,7 @@ function Set-AzServiceConnection {
 
     # We also need Subscription info
 
-    $Subscription = Get-CurrentAzSubscription
-    $SubscriptionId = $Subscription.id
+    $Subscription = Get-AzSubscription -SubscriptionId $SubscriptionId
     $SubscriptionName = $Subscription.name
     $TenantId = $Subscription.tenantId
 
@@ -735,7 +878,7 @@ function Set-AzServiceConnection {
         $ServiceConnectionId = $ServiceConnection.id
 
         # Grant access permission to all pipelines and suppress output
-        $null = az devops service-endpoint update --id $ServiceConnectionId --enable-for-all
+        $null = az devops service-endpoint update --id $ServiceConnectionId --subscription $SubscriptionId --enable-for-all
     }
     else {
         Write-Error "Service Connection could not be created"
@@ -747,18 +890,20 @@ function Set-AzServiceConnection {
 function Remove-AzServiceConnection {
     param(
         [Parameter(Mandatory=$true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory=$true)]
         [string]$ResourcePrefix,
         [string]$Environment
     )
 
     $Name = Get-NextAzureResourceName -Prefix $ResourcePrefix -Environment $Environment
 
-    $ServiceConnection = Get-AzServiceConnection -Name $Name
+    $ServiceConnection = Get-AzServiceConnection -SubscriptionId $SubscriptionId -Name $Name
 
     if ($ServiceConnection) {
         Write-Information "Deleting Service Connection '$Name'"
 
-        $null = (az devops service-endpoint delete --id $ServiceConnection.id --yes)
+        $null = (az devops service-endpoint delete --id $ServiceConnection.id --subscription $SubscriptionId --yes)
 
         if ($ServiceConnection.authorization.scheme -eq 'ServicePrincipal') {
             # We also need to delete this service principal

@@ -8,9 +8,9 @@ param sharedResourceGroupName string
 
 param buildId string
 
+param buildTag string
+
 @allowed([
-  'F1'
-  'D1'
   'B1'
   'B2'
   'B3'
@@ -34,13 +34,9 @@ param webAppSkuCapacity int
 
 param webAppSlotName string
 
-param webAppSwapSlotName string
-
 param webAppDomainName string
 
 param webAppCertName string
-
-param webAppNodeVersion object
 
 param webAppSettings object
 
@@ -53,6 +49,7 @@ var sharedResourceNamePrefix = sharedResourceGroupName == envResourceGroupName ?
 // Define the app service resources
 
 var webAppName = '${sharedResourceNamePrefix}-app'
+var containerRegistryName = '${replace(sharedResourceNamePrefix, '-', '')}cr'
 
 module webApp 'app-service.bicep' = {
   name: 'web-app'
@@ -63,15 +60,17 @@ module webApp 'app-service.bicep' = {
     appServiceName: webAppName
     skuName: webAppSkuName
     skuCapacity: webAppSkuCapacity
-    nodeVersion: webAppNodeVersion.node
     slotName: webAppSlotName
-    swapSlotName: webAppSwapSlotName
+    containerRegistryName: containerRegistryName
   }
 }
 
 var webAppServicePlanId = webApp.outputs.appServicePlanId
 var webAppServiceId = webApp.outputs.appServiceId
 var webAppServiceDefaultHostname = webApp.outputs.appServiceDefaultHostname
+var containerRegistryServer = webApp.outputs.containerRegistryServer
+var containerImageName = replace(envResourceNamePrefix, '-', '')
+var containerImageTag = buildTag
 
 // Define the app service domain
 
@@ -108,11 +107,13 @@ module webAppInsights 'app-insights.bicep' = {
   params: {
     location: location
     resourceName: '${envResourceNamePrefix}-ai'
+    workspaceName: '${envResourceNamePrefix}-aiws'
     appServiceId: webAppServiceId
   }
 }
 
 var webAppInsightsInstrumentationKey = webAppInsights.outputs.instrumentationKey
+var webAppInsightsConnectionString = webAppInsights.outputs.connectionString
 
 // Define the CDN resources
 
@@ -130,20 +131,22 @@ module cdn 'cdn.bicep' = {
 var baseUrl = 'https://${webAppServiceHostname}'
 var cdnEndpointHostname = cdn.outputs.endpointHostName
 var cdnEndpointUrl = 'https://${cdnEndpointHostname}'
+var containerRegistryServerUrl = 'https://${containerRegistryServer}'
 
 // These are the base settings required for the deployment
 var webAppDeploymentSettings = {
   APP_ENV: environment
+  APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
+  APPLICATIONINSIGHTS_CONNECTION_STRING: webAppInsightsConnectionString
   BASE_URL: baseUrl
-  NEXT_COMPRESS: 'false'
+  DOCKER_IMAGE_NAME: containerImageName
+  DOCKER_IMAGE_TAG: containerImageTag
+  DOCKER_REGISTRY_SERVER: containerRegistryServer
+  DOCKER_REGISTRY_SERVER_URL: containerRegistryServerUrl
   NEXT_PUBLIC_APPINSIGHTS_INSTRUMENTATIONKEY: webAppInsightsInstrumentationKey
+  NEXT_PUBLIC_APPINSIGHTS_CONNECTION_STRING: webAppInsightsConnectionString
   NEXT_PUBLIC_BUILD_ID: buildId
   NEXT_PUBLIC_CDN_URL: cdnEndpointUrl
-  NODE_ENV: 'production'
-  // See https://github.com/projectkudu/kudu/wiki/Configurable-settings#changing-the-timeout-before-external-commands-are-killed
-  SCM_COMMAND_IDLE_TIMEOUT: 180
-  WEBSITE_NODE_DEFAULT_VERSION: webAppNodeVersion.node
-  WEBSITE_NPM_DEFAULT_VERSION: webAppNodeVersion.npm
 }
 
 // Merge the default settings into any additional settings provided via the `webAppSettings` parameter
@@ -155,7 +158,6 @@ module webAppConfig 'app-service-config.bicep' = {
   params: {
     appServiceName: webAppName
     slotName: webAppSlotName
-    swapSlotName: webAppSwapSlotName
     appSettings: webAppConfigSettings
   }
 }
@@ -167,4 +169,5 @@ output webAppName string = webAppName
 output webAppBaseUrl string = baseUrl
 output webAppSettings object = webAppConfigSettings
 output webAppInsightsInstrumentationKey string = webAppInsightsInstrumentationKey
+output webAppInsightsConnectionString string = webAppInsightsConnectionString
 output cdnEndpointUrl string = cdnEndpointUrl

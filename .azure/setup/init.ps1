@@ -6,16 +6,16 @@ Initialises a new next-azure project.
 .DESCRIPTION
 Creates default Resource Groups, Service Principals, Service Connections, Environments and Variable Groups in Azure and Azure DevOps required for by the next-azure deployment Pipeline.
 
-.PARAMETER SubscriptionId
-The ID (GUID) of the Subscription where Azure Resource Groups and resources should be created.
-
 .PARAMETER ResourcePrefix
 A string that will be used to prefix resource names for this project - it should be relevant to your project to help identify resources in Azure and Azure DevOps, but as short as possible (5 characters or less is ideal) due to resource name length limits in Azure (see RELATED LINKS).
 
 Please make sure that there are no existing resources using this same prefix as this could lead to unintended changes.
 
+.PARAMETER SubscriptionId
+The ID (GUID) of the Subscription where Azure Resource Groups and resources should be created.
+
 .PARAMETER ProdEnvironment
-The name of your production environment. Defaults to `prod`.
+Name of the production environment. Defaults to `prod`.
 
 .PARAMETER PreProdEnvironments
 An array (comma-separated-values) of pre-production environment names that you want to create. Defaults to `preview`.
@@ -48,9 +48,9 @@ https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resourc
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)]
-    [string]$SubscriptionId,
-    [Parameter(Mandatory=$true)]
     [string]$ResourcePrefix,
+    [Parameter(Mandatory=$true)]
+    [string]$SubscriptionId,
     [string]$ProdEnvironment = 'prod',
     [string[]]$PreProdEnvironments = @('preview'),
     [Parameter(Mandatory=$true)]
@@ -85,9 +85,9 @@ if ($Config -and !$Force) {
 }
 
 $ConfigSettings = @{
-    SubscriptionId = $SubscriptionId
     ResourcePrefix = $ResourcePrefix
-    ProductionEnvironment = $ProdEnvironment
+    SubscriptionId = $SubscriptionId
+    ProdEnvironment = $ProdEnvironment
     Location = $Location
     OrgUrl = $OrgUrl
     ProjectName = $ProjectName
@@ -103,7 +103,7 @@ Write-Line -InformationAction Continue
 
 # Init defaults
 
-Set-NextAzureDefaults -Config $Config -WebAppSkuName 'F1' -WebAppSkuCapacity 1 -InformationAction Continue
+Set-NextAzureDefaults -Config $Config -WebAppSkuName 'B1' -WebAppSkuCapacity 1 -InformationAction Continue
 
 Write-Line -InformationAction Continue
 

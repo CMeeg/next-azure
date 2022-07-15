@@ -18,7 +18,7 @@ resource profile 'Microsoft.Cdn/profiles@2020-09-01' = {
       originHostHeader: originHostname
       isHttpAllowed: true
       isHttpsAllowed: true
-      queryStringCachingBehavior: 'IgnoreQueryString'
+      queryStringCachingBehavior: 'UseQueryString'
       contentTypesToCompress: [
         'application/json'
         'image/svg+xml'
