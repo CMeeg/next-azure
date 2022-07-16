@@ -53,7 +53,6 @@ resource appService 'Microsoft.Web/sites@2020-12-01' = {
   }
   tags: {
     'hidden-related:${appServicePlan.id}': 'empty'
-    displayName: 'Website'
   }
   properties: {
     serverFarmId: appServicePlan.id
