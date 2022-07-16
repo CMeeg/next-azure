@@ -392,6 +392,17 @@ There will be no sales pitch from me - I am just going to assume that if you're 
 
 What I can say is that deploying Next.js and hosting in Azure has worked out well for me on the projects I have worked on so it's by no means a bad choice, and hopefully works out for you too!
 
+### Can I deploy to a Windows (IIS) App Service?
+
+Yes - in fact that's what this example used to do, but was switched over to target a Linux App Service because:
+
+* I made an assumption that Linux would be better suited for this project in terms of meeting expectations if coming from other hosting providers where Linux is the defualt (or only) choice
+* The behaviour and performance of the pipeline is more predictable as it eliminates the need to run npm install (or equivalent) both in the pipeline and on the app service post-deploy, which can sometimes fail, or take much longer than you would expect (it could be unpredictable)
+* It opens up possibilities such as using tools like pnpm, which are not supported on Windows app service due to lack of support for symlinks - essentially I think it provides more freedom of choice when using this example as a starting point for your app
+* You can more easily spin up the "production environment" locally using Docker if you want to do some testing locally before pushing through the pipeline
+
+If you want to use Windows, you can checkout the `v1.0.0` tag of this repo and use that as a starting point, but I don't currently have plans to maintain that approach any further so cannot guarantee there won't be issues at some point in the future as the underlying tech moves on.
+
 ### Can I use TypeScript with this example?
 
 Next.js fully supports TypeScript, but the code specific to this example repo is currently not "typed". I do have typed versions of this code in another project that I will bring across to here when I find time.
