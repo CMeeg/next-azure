@@ -133,6 +133,7 @@ module containerApp './containers/container-app.bicep' = {
         value: appInsights.outputs.connectionString
       }
     ]
+    targetPort: 3000
   }
 }
 

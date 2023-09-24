@@ -12,14 +12,15 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-02-01-pr
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: false
+    // TODO: This is enabled because of the error: "Cannot perform credential operations for {resourceGroupPath}/providers/Microsoft.ContainerRegistry/registries/{containerRegistryName} as admin user is disabled" - would prefer to disable
+    adminUserEnabled: true
   }
 }
 
 var acrPullRole = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 
 resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: containerRegistry // Use when specifying a scope that is different than the deployment scope
+  scope: containerRegistry
   name: guid(subscription().id, resourceGroup().id, principalId, acrPullRole)
   properties: {
     roleDefinitionId: acrPullRole
