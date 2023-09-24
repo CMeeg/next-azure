@@ -3,7 +3,7 @@ param location string = resourceGroup().location
 param tags object = {}
 param logAnalyticsWorkspaceId string
 
-resource environment 'Microsoft.App/managedEnvironments@2023-04-01-preview' = {
+resource environment 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: name
   location: location
   tags: tags

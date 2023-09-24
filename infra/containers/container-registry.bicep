@@ -4,7 +4,7 @@ param tags object = {}
 param principalId string
 param logAnalyticsWorkspaceId string
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-02-01-preview' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' = {
   name: name
   location: location
   tags: tags

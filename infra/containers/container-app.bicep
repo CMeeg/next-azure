@@ -21,7 +21,7 @@ param serviceBinds array = []
 param serviceType string = ''
 param targetPort int = 80
 
-resource containerApp 'Microsoft.App/containerApps@2023-04-01-preview' = {
+resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
   tags: tags
