@@ -1,8 +1,8 @@
 param name string
 param location string = resourceGroup().location
 param tags object = {}
-param principalId string
 param logAnalyticsWorkspaceId string
+param acrPullPrincipalIds array
 
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' = {
   name: name
@@ -12,14 +12,15 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' =
     name: 'Basic'
   }
   properties: {
-    // TODO: This is enabled because of the error: "Cannot perform credential operations for {resourceGroupPath}/providers/Microsoft.ContainerRegistry/registries/{containerRegistryName} as admin user is disabled" - would prefer to disable
+    // TODO: This is enabled because of the error when running `azd deploy`: "Cannot perform credential operations for {resourceGroupPath}/providers/Microsoft.ContainerRegistry/registries/{containerRegistryName} as admin user is disabled" - would prefer to disable though
     adminUserEnabled: true
   }
 }
 
+// See: https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#acrpull
 var acrPullRole = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 
-resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for principalId in acrPullPrincipalIds: {
   scope: containerRegistry
   name: guid(subscription().id, resourceGroup().id, principalId, acrPullRole)
   properties: {
@@ -27,7 +28,7 @@ resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
     principalType: 'ServicePrincipal'
     principalId: principalId
   }
-}
+}]
 
 resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'diagnostics'

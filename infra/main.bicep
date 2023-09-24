@@ -27,16 +27,16 @@ param applicationInsightsName string = ''
 param containerAppEnvironmentName string = ''
 param containerAppName string = ''
 param containerRegistryName string = ''
-param identityName string = ''
 param logAnalyticsWorkspaceName string = ''
 param resourceGroupName string = ''
+param webAppServiceIdentityName string = ''
 
 // Load abbreviations to be used when naming resources
 // See: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
 var abbrs = loadJsonContent('./abbreviations.json')
 
 // Generate a unique token to be used in naming resources
-var resourceToken = toLower(uniqueString(subscription().id, environmentName, location, projectName))
+var resourceToken = take(toLower(uniqueString(subscription().id, environmentName, location, projectName)), 4)
 
 // Functions for building resource names based on a naming convention
 // See: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming
@@ -65,16 +65,6 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2022-09-01' = {
 
 // Deploy resources to the resource group
 
-module identity './security/user-assigned-identity.bicep' = {
-  name: 'identity'
-  scope: resourceGroup
-  params: {
-    name: !empty(identityName) ? identityName : buildProjectResourceName(abbrs.security.user_assigned_identity, projectName, environmentName, resourceToken, true)
-    location: location
-    tags: tags
-  }
-}
-
 module logAnalyticsWorkspace './insights/log-analytics-workspace.bicep' = {
   name: 'logAnalyticsWorkspace'
   scope: resourceGroup
@@ -102,7 +92,18 @@ module containerAppEnvironment './containers/container-app-environment.bicep' = 
   params: {
     name: !empty(containerAppEnvironmentName) ? containerAppEnvironmentName : buildProjectResourceName(abbrs.containers.container_app_environment, projectName, environmentName, resourceToken, true)
     location: location
+    tags: tags
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
+  }
+}
+
+module webAppServiceIdentity './security/user-assigned-identity.bicep' = {
+  name: '${webAppServiceName}-identity'
+  scope: resourceGroup
+  params: {
+    name: !empty(webAppServiceIdentityName) ? webAppServiceIdentityName : buildServiceResourceName(abbrs.security.user_assigned_identity, projectName, webAppServiceName, environmentName, resourceToken, true)
+    location: location
+    tags: tags
   }
 }
 
@@ -112,12 +113,15 @@ module containerRegistry './containers/container-registry.bicep' =  {
   params: {
     name: !empty(containerRegistryName) ? containerRegistryName : buildProjectResourceName(abbrs.containers.container_registry, projectName, environmentName, resourceToken, false)
     location: location
-    principalId: identity.outputs.principalId
+    tags: tags
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
+    acrPullPrincipalIds: [
+      webAppServiceIdentity.outputs.principalId
+    ]
   }
 }
 
-module containerApp './containers/container-app.bicep' = {
+module webAppServiceContainer './containers/container-app.bicep' = {
   name: '${webAppServiceName}-container-app'
   scope: resourceGroup
   params: {
@@ -125,7 +129,7 @@ module containerApp './containers/container-app.bicep' = {
     location: location
     tags: union(tags, { 'azd-service-name': webAppServiceName })
     containerAppEnvironmentId: containerAppEnvironment.outputs.id
-    userAssignedIdentityId: identity.outputs.id
+    userAssignedIdentityId: webAppServiceIdentity.outputs.id
     containerRegistryName: containerRegistry.outputs.name
     env: [
       {
@@ -152,4 +156,4 @@ output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 
-output WEB_APP_BASE_URL string = containerApp.outputs.uri
+output WEB_APP_BASE_URL string = webAppServiceContainer.outputs.uri
