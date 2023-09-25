@@ -77,4 +77,5 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
 output id string = containerApp.id
 output name string = containerApp.name
 output serviceBind object = !empty(serviceType) ? { serviceId: containerApp.id, name: name } : {}
+output hostName string = ingressEnabled ? containerApp.properties.configuration.ingress.fqdn : ''
 output uri string = ingressEnabled ? 'https://${containerApp.properties.configuration.ingress.fqdn}' : ''

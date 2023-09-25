@@ -1,4 +1,8 @@
 {
+  "cdn": {
+    "cdn_profile": "cdnp",
+    "cdn_endpoint": "cdne"
+  },
   "containers": {
     "container_app": "ca",
     "container_app_environment": "cae",

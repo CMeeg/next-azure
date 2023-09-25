@@ -19,6 +19,9 @@ param projectName string
 @description('Name of the web service/application')
 param webAppServiceName string = 'web'
 
+@description('Custom domain name for the web service/application')
+param webAppServiceDomainName string = ''
+
 // Optional parameters to override the default azd resource naming conventions. Update the main.parameters.json file to provide values. For example:
 // "resourceGroupName": {
 //    "value": "myGroupName"
@@ -29,6 +32,9 @@ param containerAppName string = ''
 param containerRegistryName string = ''
 param logAnalyticsWorkspaceName string = ''
 param resourceGroupName string = ''
+
+param webAppServiceCdnEndpointName string = ''
+param webAppServiceCdnProfileName string = ''
 param webAppServiceIdentityName string = ''
 
 // Load abbreviations to be used when naming resources
@@ -107,7 +113,7 @@ module webAppServiceIdentity './security/user-assigned-identity.bicep' = {
   }
 }
 
-module containerRegistry './containers/container-registry.bicep' =  {
+module containerRegistry './containers/container-registry.bicep' = {
   name: 'containerRegistry'
   scope: resourceGroup
   params: {
@@ -121,11 +127,31 @@ module containerRegistry './containers/container-registry.bicep' =  {
   }
 }
 
-module webAppServiceContainer './containers/container-app.bicep' = {
+// We need to compute the origin hostname for the web app CDN - if a custom domain name is used, then we can use that, otherwise we need to use the default container app hostname
+var webAppServiceContainerAppName = !empty(containerAppName) ? containerAppName : buildServiceResourceName(abbrs.containers.container_app, projectName, webAppServiceName, environmentName, resourceToken, true)
+var webAppServiceHostName = !empty(webAppServiceDomainName) ? webAppServiceDomainName : '${webAppServiceContainerAppName}.${containerAppEnvironment.outputs.defaultDomain}'
+var webAppServiceUri = 'https://${webAppServiceHostName}'
+
+module webAppServiceCdn './cdn/cdn.bicep' = {
+  name: '${webAppServiceName}-cdn'
+  scope: resourceGroup
+  params: {
+    profileName: !empty(webAppServiceCdnProfileName) ? webAppServiceCdnProfileName : buildServiceResourceName(abbrs.cdn.cdn_profile, projectName, webAppServiceName, environmentName, resourceToken, true)
+    endpointName: !empty(webAppServiceCdnEndpointName) ? webAppServiceCdnEndpointName : buildServiceResourceName(abbrs.cdn.cdn_endpoint, projectName, webAppServiceName, environmentName, resourceToken, true)
+    location: location
+    tags: tags
+    originHostName: webAppServiceHostName
+  }
+}
+
+var buildId = uniqueString(resourceGroup.id, deployment().name)
+
+// TODO: Pass through `webAppServiceDomainName` to add custom domain name to container app
+module webAppServiceContainerApp './containers/container-app.bicep' = {
   name: '${webAppServiceName}-container-app'
   scope: resourceGroup
   params: {
-    name: !empty(containerAppName) ? containerAppName : buildServiceResourceName(abbrs.containers.container_app, projectName, webAppServiceName, environmentName, resourceToken, true)
+    name: webAppServiceContainerAppName
     location: location
     tags: union(tags, { 'azd-service-name': webAppServiceName })
     containerAppEnvironmentId: containerAppEnvironment.outputs.id
@@ -133,8 +159,32 @@ module webAppServiceContainer './containers/container-app.bicep' = {
     containerRegistryName: containerRegistry.outputs.name
     env: [
       {
+        name: 'APP_ENV'
+        value: environmentName
+      }
+      {
+        name: 'BASE_URL'
+        value: webAppServiceUri
+      }
+      {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
         value: appInsights.outputs.connectionString
+      }
+      {
+        name: 'NEXT_COMPRESS'
+        value: 'false'
+      }
+      {
+        name: 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.outputs.connectionString
+      }
+      {
+        name: 'NEXT_PUBLIC_BUILD_ID'
+        value: buildId
+      }
+      {
+        name: 'NEXT_PUBLIC_CDN_URL'
+        value: webAppServiceCdn.outputs.endpointUri
       }
     ]
     targetPort: 3000
@@ -144,16 +194,20 @@ module webAppServiceContainer './containers/container-app.bicep' = {
 // TODO: Key vault?
 // TODO: Storage?
 
-// App outputs
+// azd outputs
+output AZURE_LOCATION string = location
+output AZURE_TENANT_ID string = tenant().tenantId
 
-output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
-output APPLICATIONINSIGHTS_NAME string = appInsights.outputs.name
-
+// Container outputs
 output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerAppEnvironment.outputs.name
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
 output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
 
-output AZURE_LOCATION string = location
-output AZURE_TENANT_ID string = tenant().tenantId
-
-output WEB_APP_BASE_URL string = webAppServiceContainer.outputs.uri
+// Web app outputs
+output APP_ENV string = environmentName
+output BASE_URL string = webAppServiceUri
+output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
+output NEXT_COMPRESS bool = false
+output NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
+output NEXT_PUBLIC_BUILD_ID string = buildId
+output NEXT_PUBLIC_CDN_URL string = webAppServiceCdn.outputs.endpointUri
