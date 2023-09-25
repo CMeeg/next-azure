@@ -4,10 +4,12 @@ name: next-azure
 metadata:
   template: next-azure-aca@0.0.1-beta
 hooks:
+  preprovision:
+    shell: pwsh
+    run: ./infra/web.settings.ps1
   postprovision:
     shell: pwsh
     run: copy-item "./.azure/${env:AZURE_ENV_NAME}/.env" -destination "./.env.local"
-    interactive: true
 services:
   web:
     project: ./

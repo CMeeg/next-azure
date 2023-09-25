@@ -145,6 +145,10 @@ module webAppServiceCdn './cdn/cdn.bicep' = {
 }
 
 var buildId = uniqueString(resourceGroup.id, deployment().name)
+var nodeEnv = 'production'
+
+// This file is created by a `preprovision` hook - if you're seeing an error here because this file doesn't exist, then run `azd provision` to create it
+var webAppSettings = loadJsonContent('./web.settings.json')
 
 // TODO: Pass through `webAppServiceDomainName` to add custom domain name to container app
 module webAppServiceContainerApp './containers/container-app.bicep' = {
@@ -157,6 +161,10 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerAppEnvironmentId: containerAppEnvironment.outputs.id
     userAssignedIdentityId: webAppServiceIdentity.outputs.id
     containerRegistryName: containerRegistry.outputs.name
+    containerCpuCoreCount: webAppSettings.container.containerCpuCoreCount
+    containerMemory: webAppSettings.container.containerMemory
+    containerMinReplicas: webAppSettings.scale.containerMinReplicas
+    containerMaxReplicas: webAppSettings.scale.containerMaxReplicas
     env: [
       {
         name: 'APP_ENV'
@@ -186,6 +194,10 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
         name: 'NEXT_PUBLIC_CDN_URL'
         value: webAppServiceCdn.outputs.endpointUri
       }
+      {
+        name: 'NODE_ENV'
+        value: nodeEnv
+      }
     ]
     targetPort: 3000
   }
@@ -211,3 +223,4 @@ output NEXT_COMPRESS bool = false
 output NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
 output NEXT_PUBLIC_BUILD_ID string = buildId
 output NEXT_PUBLIC_CDN_URL string = webAppServiceCdn.outputs.endpointUri
+output NODE_ENV string = nodeEnv
