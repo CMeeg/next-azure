@@ -6,11 +6,13 @@ param userAssignedIdentityId string
 param containerRegistryName string
 
 param allowedOrigins array = []
+param certificateId string = ''
 param containerCpuCoreCount string = '0.5'
 param containerMaxReplicas int = 1
 param containerMemory string = '1.0Gi'
 param containerMinReplicas int = 0
 param containerName string = 'main'
+param customDomainName string = ''
 param env array = []
 param external bool = true
 param imageName string = ''
@@ -42,6 +44,13 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         corsPolicy: {
           allowedOrigins: union([ 'https://portal.azure.com', 'https://ms.portal.azure.com' ], allowedOrigins)
         }
+        customDomains: !empty(customDomainName) && !empty(certificateId) ? [
+          {
+            name: customDomainName
+            certificateId: certificateId
+            bindingType: 'SniEnabled'
+          }
+        ] : null
       } : null
       dapr: { enabled: false }
       secrets: secrets

@@ -12,7 +12,8 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 {
   "container": {
     "containerCpuCoreCount": "$(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_CPU_CORE_COUNT} "0.5")",
-    "containerMemory": "$(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MEMORY} "1.0Gi")"
+    "containerMemory": "$(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MEMORY} "1.0Gi")",
+    "customDomainName": "$(Get-ValueOrDefault ${env:WEB_APP_CUSTOM_DOMAIN_NAME} "")"
   },
   "scale": {
     "containerMinReplicas": $(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MIN_REPLICAS} 0),

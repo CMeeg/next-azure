@@ -19,9 +19,6 @@ param projectName string
 @description('Name of the web service/application')
 param webAppServiceName string = 'web'
 
-@description('Custom domain name for the web service/application')
-param webAppServiceDomainName string = ''
-
 // Optional parameters to override the default azd resource naming conventions. Update the main.parameters.json file to provide values. For example:
 // "resourceGroupName": {
 //    "value": "myGroupName"
@@ -92,6 +89,11 @@ module appInsights './insights/application-insights.bicep' = {
   }
 }
 
+// This file is created by a `preprovision` hook - if you're seeing an error here because this file doesn't exist, then run `azd provision` to create it
+var webAppSettings = loadJsonContent('./web.settings.json')
+
+var webAppServiceCustomDomainName = webAppSettings.container.customDomainName
+
 module containerAppEnvironment './containers/container-app-environment.bicep' = {
   name: 'containerAppEnvironment'
   scope: resourceGroup
@@ -100,6 +102,7 @@ module containerAppEnvironment './containers/container-app-environment.bicep' = 
     location: location
     tags: tags
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
+    webAppServiceCustomDomainName: webAppServiceCustomDomainName
   }
 }
 
@@ -129,7 +132,9 @@ module containerRegistry './containers/container-registry.bicep' = {
 
 // We need to compute the origin hostname for the web app CDN - if a custom domain name is used, then we can use that, otherwise we need to use the default container app hostname
 var webAppServiceContainerAppName = !empty(containerAppName) ? containerAppName : buildServiceResourceName(abbrs.containers.container_app, projectName, webAppServiceName, environmentName, resourceToken, true)
-var webAppServiceHostName = !empty(webAppServiceDomainName) ? webAppServiceDomainName : '${webAppServiceContainerAppName}.${containerAppEnvironment.outputs.defaultDomain}'
+
+var webAppServiceHostName = !empty(webAppServiceCustomDomainName) ? webAppServiceCustomDomainName : '${webAppServiceContainerAppName}.${containerAppEnvironment.outputs.defaultDomain}'
+
 var webAppServiceUri = 'https://${webAppServiceHostName}'
 
 module webAppServiceCdn './cdn/cdn.bicep' = {
@@ -147,10 +152,6 @@ module webAppServiceCdn './cdn/cdn.bicep' = {
 var buildId = uniqueString(resourceGroup.id, deployment().name)
 var nodeEnv = 'production'
 
-// This file is created by a `preprovision` hook - if you're seeing an error here because this file doesn't exist, then run `azd provision` to create it
-var webAppSettings = loadJsonContent('./web.settings.json')
-
-// TODO: Pass through `webAppServiceDomainName` to add custom domain name to container app
 module webAppServiceContainerApp './containers/container-app.bicep' = {
   name: '${webAppServiceName}-container-app'
   scope: resourceGroup
@@ -165,6 +166,8 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerMemory: webAppSettings.container.containerMemory
     containerMinReplicas: webAppSettings.scale.containerMinReplicas
     containerMaxReplicas: webAppSettings.scale.containerMaxReplicas
+    customDomainName: webAppServiceCustomDomainName
+    certificateId: containerAppEnvironment.outputs.webAppServiceCertificateId
     env: [
       {
         name: 'APP_ENV'
