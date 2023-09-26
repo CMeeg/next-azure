@@ -6,10 +6,10 @@ metadata:
 hooks:
   preprovision:
     shell: pwsh
-    run: ./infra/web.settings.ps1
+    run: ./.azure/hooks/preprovision.ps1
   postprovision:
     shell: pwsh
-    run: copy-item "./.azure/${env:AZURE_ENV_NAME}/.env" -destination "./.env.local"
+    run: ./.azure/hooks/postprovision.ps1
 services:
   web:
     project: ./

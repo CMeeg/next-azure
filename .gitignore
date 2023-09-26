@@ -27,6 +27,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.azure
 
 # vercel
 .vercel
@@ -36,5 +37,6 @@ yarn-error.log*
 next-env.d.ts
 
 # azure
-.azure
+.azure/*
+!.azure/hooks/
 /infra/*.settings.json
