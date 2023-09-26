@@ -4,6 +4,9 @@ const buildId = process.env.NEXT_PUBLIC_BUILD_ID || null
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    instrumentationHook: true
+  },
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
