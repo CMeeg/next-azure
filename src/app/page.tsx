@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { getCdnUrl } from '@/lib/url'
 import styles from './page.module.css'
 
 export default function Home() {
@@ -11,13 +12,13 @@ export default function Home() {
         </p>
         <div>
           <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+            href="https://vercel.com"
             target="_blank"
             rel="noopener noreferrer"
           >
             By{' '}
             <Image
-              src="/vercel.svg"
+              src={getCdnUrl('/vercel.svg')}
               alt="Vercel Logo"
               className={styles.vercelLogo}
               width={100}
@@ -31,7 +32,7 @@ export default function Home() {
       <div className={styles.center}>
         <Image
           className={styles.logo}
-          src="/next.svg"
+          src={getCdnUrl('/next.svg')}
           alt="Next.js Logo"
           width={180}
           height={37}
@@ -41,7 +42,7 @@ export default function Home() {
 
       <div className={styles.grid}>
         <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          href="https://nextjs.org/docs"
           className={styles.card}
           target="_blank"
           rel="noopener noreferrer"
@@ -53,7 +54,7 @@ export default function Home() {
         </a>
 
         <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          href="https://nextjs.org/learn"
           className={styles.card}
           target="_blank"
           rel="noopener noreferrer"
@@ -65,7 +66,7 @@ export default function Home() {
         </a>
 
         <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          href="https://vercel.com/templates?framework=next.js"
           className={styles.card}
           target="_blank"
           rel="noopener noreferrer"
@@ -77,7 +78,7 @@ export default function Home() {
         </a>
 
         <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          href="https://vercel.com/new"
           className={styles.card}
           target="_blank"
           rel="noopener noreferrer"

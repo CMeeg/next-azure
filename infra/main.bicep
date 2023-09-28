@@ -217,4 +217,5 @@ output BASE_URL string = webAppServiceUri
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
 output NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
 output NEXT_PUBLIC_BUILD_ID string = buildId
+output NEXT_PUBLIC_CDN_HOSTNAME string = webAppServiceCdn.outputs.endpointHostName
 output NEXT_PUBLIC_CDN_URL string = webAppServiceCdn.outputs.endpointUri
