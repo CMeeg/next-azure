@@ -1,5 +1,5 @@
-import { useAzureMonitor } from '@azure/monitor-opentelemetry'
-import type { AzureMonitorOpenTelemetryOptions } from '@azure/monitor-opentelemetry'
+import { useAzureMonitor } from 'applicationinsights'
+import type { AzureMonitorOpenTelemetryOptions } from 'applicationinsights'
 import { Resource } from '@opentelemetry/resources'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 
@@ -16,7 +16,10 @@ if (connectionString) {
       connectionString
     },
     resource,
-    samplingRatio: 0.1
+    samplingRatio: 0.5,
+    logInstrumentationOptions: {
+      console: { enabled: true}
+    }
   }
 
   // This is not a hook, it's just named like a hook!
