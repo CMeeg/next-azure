@@ -19,7 +19,16 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     "containerMinReplicas": $(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MIN_REPLICAS} 0),
     "containerMaxReplicas": $(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MAX_REPLICAS} 1)
   },
-  "env": {}
+  "env": [
+    {
+      "name": "NEXT_COMPRESS",
+      "value": "$(Get-ValueOrDefault ${env:NEXT_COMPRESS} "false")"
+    },
+    {
+      "name": "NODE_ENV",
+      "value": "$(Get-ValueOrDefault ${env:NODE_ENV} "production")"
+    }
+  ]
 }
 "@ | Out-File -FilePath "$scriptDir/web.settings.json" -Encoding utf8
 

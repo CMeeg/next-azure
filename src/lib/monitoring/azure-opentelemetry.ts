@@ -3,7 +3,7 @@ import type { AzureMonitorOpenTelemetryOptions } from '@azure/monitor-openteleme
 import { Resource } from '@opentelemetry/resources'
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 
-const connectionString = process.env.NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING
+const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING
 
 if (connectionString) {
   const resource = new Resource({

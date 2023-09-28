@@ -150,7 +150,33 @@ module webAppServiceCdn './cdn/cdn.bicep' = {
 }
 
 var buildId = uniqueString(resourceGroup.id, deployment().name)
-var nodeEnv = 'production'
+
+var webAppEnv = [
+  {
+    name: 'APP_ENV'
+    value: environmentName
+  }
+  {
+    name: 'BASE_URL'
+    value: webAppServiceUri
+  }
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsights.outputs.connectionString
+  }
+  {
+    name: 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsights.outputs.connectionString
+  }
+  {
+    name: 'NEXT_PUBLIC_BUILD_ID'
+    value: buildId
+  }
+  {
+    name: 'NEXT_PUBLIC_CDN_URL'
+    value: webAppServiceCdn.outputs.endpointUri
+  }
+]
 
 module webAppServiceContainerApp './containers/container-app.bicep' = {
   name: '${webAppServiceName}-container-app'
@@ -168,40 +194,7 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerMaxReplicas: webAppSettings.scale.containerMaxReplicas
     customDomainName: webAppServiceCustomDomainName
     certificateId: containerAppEnvironment.outputs.webAppServiceCertificateId
-    env: [
-      {
-        name: 'APP_ENV'
-        value: environmentName
-      }
-      {
-        name: 'BASE_URL'
-        value: webAppServiceUri
-      }
-      {
-        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-        value: appInsights.outputs.connectionString
-      }
-      {
-        name: 'NEXT_COMPRESS'
-        value: 'false'
-      }
-      {
-        name: 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING'
-        value: appInsights.outputs.connectionString
-      }
-      {
-        name: 'NEXT_PUBLIC_BUILD_ID'
-        value: buildId
-      }
-      {
-        name: 'NEXT_PUBLIC_CDN_URL'
-        value: webAppServiceCdn.outputs.endpointUri
-      }
-      {
-        name: 'NODE_ENV'
-        value: nodeEnv
-      }
-    ]
+    env: union(webAppEnv, webAppSettings.env)
     targetPort: 3000
   }
 }
@@ -222,8 +215,6 @@ output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
 output APP_ENV string = environmentName
 output BASE_URL string = webAppServiceUri
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
-output NEXT_COMPRESS bool = false
 output NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING string = appInsights.outputs.connectionString
 output NEXT_PUBLIC_BUILD_ID string = buildId
 output NEXT_PUBLIC_CDN_URL string = webAppServiceCdn.outputs.endpointUri
-output NODE_ENV string = nodeEnv
