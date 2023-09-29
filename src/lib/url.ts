@@ -24,7 +24,11 @@ const joinUrlSegments = (segments?: string[] | null) => {
   return urlSegments.join('/')
 }
 
-const getAbsoluteUrl = (path: string) => {
+const getAbsoluteUrl = (path?: string) => {
+  if (!path) {
+    return baseUrl
+  }
+
   return joinUrlSegments([baseUrl, path])
 }
 
