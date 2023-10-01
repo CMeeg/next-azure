@@ -7,8 +7,8 @@ const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING
 
 if (connectionString) {
   const resource = new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: "web",
-    [SemanticResourceAttributes.SERVICE_NAMESPACE]: "next-azure"
+    [SemanticResourceAttributes.SERVICE_NAME]: process.env.WEB_APP_SERVICE_NAME,
+    [SemanticResourceAttributes.SERVICE_NAMESPACE]: process.env.WEB_APP_SERVICE_NAMESPACE
   })
 
   const options: AzureMonitorOpenTelemetryOptions = {
@@ -17,8 +17,19 @@ if (connectionString) {
     },
     resource,
     samplingRatio: 0.5,
+    instrumentationOptions: {
+      azureSdk: { enabled: true },
+      http: { enabled: true },
+      mongoDb: { enabled: false },
+      mySql: { enabled: false },
+      postgreSql: { enabled: false },
+      redis: { enabled: false },
+      redis4: { enabled: false }
+    },
     logInstrumentationOptions: {
-      console: { enabled: true}
+      console: { enabled: true },
+      bunyan: { enabled: false },
+      winston: { enabled: false }
     }
   }
 

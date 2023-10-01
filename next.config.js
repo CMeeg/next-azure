@@ -24,7 +24,8 @@ if (buildId) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    instrumentationHook: true
+    instrumentationHook: true,
+    serverComponentsExternalPackages: ['pino']
   },
   output: 'standalone',
   reactStrictMode: true,

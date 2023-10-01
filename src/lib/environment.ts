@@ -1,3 +1,5 @@
+import 'server-only'
+
 const environment = {
   development: 'development',
   production: 'production'

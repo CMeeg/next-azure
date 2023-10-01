@@ -27,6 +27,14 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
     {
       "name": "NODE_ENV",
       "value": "$(Get-ValueOrDefault ${env:NODE_ENV} "production")"
+    },
+    {
+      "name": "WEB_APP_SERVICE_NAME",
+      "value": "$(Get-ValueOrDefault ${env:WEB_APP_SERVICE_NAME} "node")"
+    },
+    {
+      "name": "WEB_APP_SERVICE_NAMESPACE",
+      "value": "$(Get-ValueOrDefault ${env:WEB_APP_SERVICE_NAMESPACE} "unknown_service")"
     }
   ]
 }

@@ -46,6 +46,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# pino-appinsights-transport is not being included in the standalone build because it is not picked up by the static analyser
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pino-appinsights-transport ./node_modules/pino-appinsights-transport
+
 USER nextjs
 
 EXPOSE 3000

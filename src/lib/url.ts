@@ -1,3 +1,5 @@
+import 'server-only'
+
 const baseUrl = process.env.BASE_URL || 'http://localhost:3000'
 const baseCdnUrl = process.env.NEXT_PUBLIC_CDN_URL || null
 const buildId = process.env.NEXT_PUBLIC_BUILD_ID || null

@@ -1,24 +1,18 @@
-/__v2__
-TODO.md
-
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.js
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
-
-# misc
-.DS_Store
-*.pem
+build/
+dist/
 
 # debug
 npm-debug.log*
@@ -39,4 +33,9 @@ next-env.d.ts
 # azure
 .azure/*
 !.azure/hooks/
-/infra/*.settings.json
+infra/*.settings.json
+
+# misc
+.DS_Store
+*.pem
+TODO.md
