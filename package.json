@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@microsoft/applicationinsights-react-js": "^17.0.0",
+    "@microsoft/applicationinsights-web": "^3.0.3",
     "applicationinsights": "^3.0.0-beta.9",
     "next": "13.5.2",
     "pino": "^8.15.3",
