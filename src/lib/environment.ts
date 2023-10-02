@@ -7,13 +7,22 @@ const environment = {
 
 type Environment = keyof typeof environment
 
-const environmentAlias: Array<{ environment: Environment, aliases: string[] }> = [
-  { environment: environment.development, aliases: [environment.development, 'dev'] },
-  { environment: environment.production, aliases: [environment.production, 'prod'] }
-]
+const environmentAlias: Array<{ environment: Environment; aliases: string[] }> =
+  [
+    {
+      environment: environment.development,
+      aliases: [environment.development, 'dev']
+    },
+    {
+      environment: environment.production,
+      aliases: [environment.production, 'prod']
+    }
+  ]
 
 const appEnvironment =
-  process.env.APP_ENV || process.env.NODE_ENV || environment.development satisfies Environment
+  process.env.APP_ENV ||
+  process.env.NODE_ENV ||
+  (environment.development satisfies Environment)
 
 const currentEnvironment = environmentAlias.reduce<Environment>(
   (currentEnv, envAlias) => {

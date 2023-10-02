@@ -1,4 +1,6 @@
-const compress = process.env.NEXT_COMPRESS ? process.env.NEXT_COMPRESS === 'true' : true
+const compress = process.env.NEXT_COMPRESS
+  ? process.env.NEXT_COMPRESS === 'true'
+  : true
 const assetPrefix = process.env.NEXT_PUBLIC_CDN_URL || ''
 const buildId = process.env.NEXT_PUBLIC_BUILD_ID || null
 
