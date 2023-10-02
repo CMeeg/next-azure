@@ -12,7 +12,7 @@
     "applicationinsights": "^3.0.0-beta.9",
     "next": "13.5.2",
     "pino": "^8.15.3",
-    "pino-appinsights-transport": "^0.1.1",
+    "pino-appinsights-transport": "^0.1.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "server-only": "^0.0.1"

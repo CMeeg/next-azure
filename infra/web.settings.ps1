@@ -29,6 +29,10 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
       "value": "$(Get-ValueOrDefault ${env:NODE_ENV} "production")"
     },
     {
+      "name": "WEB_APP_MIN_LOG_LEVEL",
+      "value": "$(Get-ValueOrDefault ${env:WEB_APP_MIN_LOG_LEVEL} 30)"
+    },
+    {
       "name": "WEB_APP_SERVICE_NAME",
       "value": "$(Get-ValueOrDefault ${env:WEB_APP_SERVICE_NAME} "node")"
     },
