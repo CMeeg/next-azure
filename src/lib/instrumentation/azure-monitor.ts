@@ -7,9 +7,10 @@ const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING
 
 if (connectionString) {
   const resource = new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: process.env.WEB_APP_SERVICE_NAME,
+    [SemanticResourceAttributes.SERVICE_NAME]:
+      process.env.SERVICE_WEB_SERVICE_NAME,
     [SemanticResourceAttributes.SERVICE_NAMESPACE]:
-      process.env.WEB_APP_SERVICE_NAMESPACE
+      process.env.SERVICE_WEB_SERVICE_NAMESPACE
   })
 
   const options: AzureMonitorOpenTelemetryOptions = {

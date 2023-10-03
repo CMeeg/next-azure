@@ -14,7 +14,7 @@ const createLogger = () => {
       target: 'pino-appinsights-transport',
       options: {
         telemetryClient,
-        minLevel: process.env.WEB_APP_MIN_LOG_LEVEL || 30
+        minLevel: process.env.SERVICE_WEB_MIN_LOG_LEVEL || 30
       }
     })
 

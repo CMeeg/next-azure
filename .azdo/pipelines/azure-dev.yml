@@ -36,7 +36,7 @@ jobs:
           - checkout: self
 
           - pwsh: |
-              Write-Output "environment is set to '$env:env_name'"
+              Write-Output "environment is set to '$(env_name)'"
             displayName: Show environment
 
           - pwsh: |

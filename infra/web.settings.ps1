@@ -11,13 +11,13 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 @"
 {
   "container": {
-    "containerCpuCoreCount": "$(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_CPU_CORE_COUNT} "0.5")",
-    "containerMemory": "$(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MEMORY} "1.0Gi")",
-    "customDomainName": "$(Get-ValueOrDefault ${env:WEB_APP_CUSTOM_DOMAIN_NAME} "")"
+    "containerCpuCoreCount": "$(Get-ValueOrDefault ${env:SERVICE_WEB_CONTAINER_CPU_CORE_COUNT} "0.5")",
+    "containerMemory": "$(Get-ValueOrDefault ${env:SERVICE_WEB_CONTAINER_MEMORY} "1.0Gi")",
+    "customDomainName": "$(Get-ValueOrDefault ${env:SERVICE_WEB_CUSTOM_DOMAIN_NAME} "")"
   },
   "scale": {
-    "containerMinReplicas": $(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MIN_REPLICAS} 0),
-    "containerMaxReplicas": $(Get-ValueOrDefault ${env:WEB_APP_CONTAINER_MAX_REPLICAS} 1)
+    "containerMinReplicas": $(Get-ValueOrDefault ${env:SERVICE_WEB_CONTAINER_MIN_REPLICAS} 0),
+    "containerMaxReplicas": $(Get-ValueOrDefault ${env:SERVICE_WEB_CONTAINER_MAX_REPLICAS} 1)
   },
   "env": [
     {
@@ -29,16 +29,16 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
       "value": "$(Get-ValueOrDefault ${env:NODE_ENV} "production")"
     },
     {
-      "name": "WEB_APP_MIN_LOG_LEVEL",
-      "value": "$(Get-ValueOrDefault ${env:WEB_APP_MIN_LOG_LEVEL} 30)"
+      "name": "SERVICE_WEB_MIN_LOG_LEVEL",
+      "value": "$(Get-ValueOrDefault ${env:SERVICE_WEB_MIN_LOG_LEVEL} 30)"
     },
     {
-      "name": "WEB_APP_SERVICE_NAME",
-      "value": "$(Get-ValueOrDefault ${env:WEB_APP_SERVICE_NAME} "node")"
+      "name": "SERVICE_WEB_SERVICE_NAME",
+      "value": "$(Get-ValueOrDefault ${env:SERVICE_WEB_SERVICE_NAME} "node")"
     },
     {
-      "name": "WEB_APP_SERVICE_NAMESPACE",
-      "value": "$(Get-ValueOrDefault ${env:WEB_APP_SERVICE_NAMESPACE} "unknown_service")"
+      "name": "SERVICE_WEB_SERVICE_NAMESPACE",
+      "value": "$(Get-ValueOrDefault ${env:SERVICE_WEB_SERVICE_NAMESPACE} "unknown_service")"
     }
   ]
 }

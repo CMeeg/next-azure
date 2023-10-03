@@ -95,6 +95,7 @@ jobs:
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          SERVICE_WEB_CONTAINER_MIN_REPLICAS: ${{ vars.SERVICE_WEB_CONTAINER_MIN_REPLICAS }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -103,3 +104,4 @@ jobs:
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          SERVICE_WEB_CONTAINER_MIN_REPLICAS: ${{ vars.SERVICE_WEB_CONTAINER_MIN_REPLICAS }}
