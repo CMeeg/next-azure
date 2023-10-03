@@ -9,8 +9,7 @@ if (connectionString) {
   const resource = new Resource({
     [SemanticResourceAttributes.SERVICE_NAME]:
       process.env.SERVICE_WEB_SERVICE_NAME,
-    [SemanticResourceAttributes.SERVICE_NAMESPACE]:
-      process.env.SERVICE_WEB_SERVICE_NAMESPACE
+    [SemanticResourceAttributes.SERVICE_NAMESPACE]: process.env.PROJECT_NAME
   })
 
   const options: AzureMonitorOpenTelemetryOptions = {

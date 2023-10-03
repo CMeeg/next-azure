@@ -9,16 +9,6 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-@minLength(1)
-@maxLength(8)
-@description('Name of the project/client e.g. `myproj`, `myclient`')
-param projectName string
-
-@minLength(1)
-@maxLength(8)
-@description('Name of the web service/application')
-param webAppServiceName string = 'web'
-
 // Optional parameters to override the default azd resource naming conventions. Update the main.parameters.json file to provide values. For example:
 // "resourceGroupName": {
 //    "value": "myGroupName"
@@ -37,6 +27,12 @@ param webAppServiceIdentityName string = ''
 // Load abbreviations to be used when naming resources
 // See: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
 var abbrs = loadJsonContent('./abbreviations.json')
+
+// This file is created by a `preprovision` hook - if you're seeing an error here and elsewhere because this file doesn't exist, run `.azure/hooks/preprovision.ps1` directly or via `azd provision` to create the file
+var settings = loadJsonContent('./settings.json')
+
+var projectName = settings.project.name
+var webAppServiceName = settings.web.name
 
 // Generate a unique token to be used in naming resources
 var resourceToken = take(toLower(uniqueString(subscription().id, environmentName, location, projectName)), 4)
@@ -89,10 +85,7 @@ module appInsights './insights/application-insights.bicep' = {
   }
 }
 
-// This file is created by a `preprovision` hook - if you're seeing an error here because this file doesn't exist, then run `azd provision` to create it
-var webAppSettings = loadJsonContent('./web.settings.json')
-
-var webAppServiceCustomDomainName = webAppSettings.container.customDomainName
+var webAppServiceCustomDomainName = settings.web.container.customDomainName
 
 module containerAppEnvironment './containers/container-app-environment.bicep' = {
   name: 'containerAppEnvironment'
@@ -188,13 +181,13 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerAppEnvironmentId: containerAppEnvironment.outputs.id
     userAssignedIdentityId: webAppServiceIdentity.outputs.id
     containerRegistryName: containerRegistry.outputs.name
-    containerCpuCoreCount: webAppSettings.container.containerCpuCoreCount
-    containerMemory: webAppSettings.container.containerMemory
-    containerMinReplicas: webAppSettings.scale.containerMinReplicas
-    containerMaxReplicas: webAppSettings.scale.containerMaxReplicas
+    containerCpuCoreCount: settings.web.container.containerCpuCoreCount
+    containerMemory: settings.web.container.containerMemory
+    containerMinReplicas: settings.web.scale.containerMinReplicas
+    containerMaxReplicas: settings.web.scale.containerMaxReplicas
     customDomainName: webAppServiceCustomDomainName
     certificateId: containerAppEnvironment.outputs.webAppServiceCertificateId
-    env: union(webAppEnv, webAppSettings.env)
+    env: union(webAppEnv, settings.web.env)
     targetPort: 3000
   }
 }

@@ -51,5 +51,5 @@ Register-EnvVars -path $(Join-Path $scriptDir "../../.env")
 Register-EnvVars -path $(Join-Path $scriptDir "../../.env.production")
 Register-EnvVars -path $(Join-Path $scriptDir "../../.env.local")
 
-# Run script to generate `web.settings.json` file used by the infra scripts
-& $(Join-Path $scriptDir "../../infra/web.settings.ps1")
+# Run script to generate `settings.json` file used by the infra scripts
+& $(Join-Path $scriptDir "../../infra/settings.ps1")

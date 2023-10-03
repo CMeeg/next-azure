@@ -33,7 +33,7 @@ next-env.d.ts
 # azure
 .azure/*
 !.azure/hooks/
-infra/*.settings.json
+infra/settings.json
 
 # misc
 .DS_Store

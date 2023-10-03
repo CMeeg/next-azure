@@ -50,15 +50,15 @@ When running `azd provision`:
 
 * The `.azure/hooks/preprovision.ps1` script runs, which
   * Loads vars from `.env`, `.env.production` and `.env.local` (if they exist) into the current environment (current process scope)
-  * Runs `infra/web.settings.ps1` to generate a `web.setting.json` file - this file can use values from the current environment, or fallback to default values if not set in the environment
+  * Runs `infra/settings.ps1` to generate a `setting.json` file - this file can use values from the current environment, or fallback to default values if not set in the environment
     * Feel free to edit and change this template as required - the format of the json this file produces doesn't need to follow any set schema, but you will need to update the Bicep files to be able to read and use whatever changes you make
     * This template allows for setting some container properties like memory and cpu settings, scale values, a custom domain name, and environment variables, but this can be extended as required
     * If you extend this template to include other resources or services you could replicate this script to describe settings for those additional resources or services
-* `azd` runs the `main.bicep` file, which loads the `web.settings.json` file to be used during provisioning of the infrastructure
-  * The `main.bicep` file sets environment variables that are required at runtime on the container app so if you need certain environment variables to be available at runtime you should add them via editing the `web.settings.ps1` script
+* `azd` runs the `main.bicep` file, which loads the `settings.json` file to be used during provisioning of the infrastructure
+  * The `main.bicep` file sets environment variables that are required at runtime on the container app so if you need certain environment variables to be available at runtime you should add them via editing the `settings.ps1` script
   * For example, if I wanted to add an environment variable named `MY_VAR` with the value `env_value` I would:
     * First add `MY_VAR="env_value"` to the appropriate env file (`.env`, `.env.production`, or `.env.local`)
-    * Then add `{ "name": "MY_VAR", "value": "$(Get-ValueOrDefault ${env:MY_VAR} "default_value")" }` to the `web.settings.ps1` script under the `env` "key"
+    * Then add `{ "name": "MY_VAR", "value": "$(Get-ValueOrDefault ${env:MY_VAR} "default_value")" }` to the `settings.ps1` script under the `env` "key"
   * The `MY_VAR` environment variable will then be available at build time through the env file, and at runtime through the container environment variables
 * `azd` writes any `output` from the `main.bicep` file to `.azure/{AZURE_ENV_NAME}/.env`
   * This is standard behaviour of `azd provision` and not specific to this template

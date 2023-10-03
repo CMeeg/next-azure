@@ -7,9 +7,6 @@
     },
     "location": {
       "value": "${AZURE_LOCATION}"
-    },
-    "projectName": {
-      "value": "na"
     }
   }
 }
