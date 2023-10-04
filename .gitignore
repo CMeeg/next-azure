@@ -1,41 +1,18 @@
-# dependencies
-node_modules/
-/.pnp
-.pnp.js
-
-# testing
-coverage/
-
-# next.js
-.next/
-out/
-
-# production
-build/
-dist/
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-.env.azure
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# azure
 .azure/*
 !.azure/hooks/
-infra/settings.json
+!.azure/scripts/
 
-# misc
+.next/
+
+infra/env-vars.json
+
+node_modules/
+
 .DS_Store
-*.pem
+.env*.local
+.env.azure
+next-env.d.ts
+npm-debug.log*
+*.tsbuildinfo
+
 TODO.md

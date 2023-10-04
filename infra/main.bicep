@@ -28,11 +28,11 @@ param webAppServiceIdentityName string = ''
 // See: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
 var abbrs = loadJsonContent('./abbreviations.json')
 
-// This file is created by a `preprovision` hook - if you're seeing an error here and elsewhere because this file doesn't exist, run `.azure/hooks/preprovision.ps1` directly or via `azd provision` to create the file
-var settings = loadJsonContent('./settings.json')
+// This file is created by a `preprovision` hook - if you're seeing an error here and elsewhere because this file doesn't exist, run `.azure/scripts/create-infra-env-vars.ps1` directly or via `azd provision` to create the file
+var envVars = loadJsonContent('./env-vars.json')
 
-var projectName = settings.project.name
-var webAppServiceName = settings.web.name
+var projectName = envVars.PROJECT_NAME
+var webAppServiceName = envVars.SERVICE_WEB_SERVICE_NAME
 
 // Generate a unique token to be used in naming resources
 var resourceToken = take(toLower(uniqueString(subscription().id, environmentName, location, projectName)), 4)
@@ -44,6 +44,12 @@ func buildResourceGroupName(abbr string, projName string, envName string) string
 func buildProjectResourceName(abbr string, projName string, envName string, token string, useDelimiter bool) string => toLower(join([ abbr, projName, envName, token ], useDelimiter ? '-' : ''))
 
 func buildServiceResourceName(abbr string, projName string, svcName string, envName string, token string, useDelimiter bool) string => toLower(join([ abbr, projName, svcName, envName, token ], useDelimiter ? '-' : ''))
+
+func stringOrDefault(value string, default string) string => empty(value) ? default : value
+
+func intOrDefault(value string, default int) int => empty(value) ? default : int(value)
+
+func boolOrDefault(value string, default bool) bool => empty(value) ? default : bool(value)
 
 // Tags that should be applied to all resources.
 //
@@ -85,7 +91,7 @@ module appInsights './insights/application-insights.bicep' = {
   }
 }
 
-var webAppServiceCustomDomainName = settings.web.container.customDomainName
+var webAppServiceCustomDomainName = stringOrDefault(envVars.SERVICE_WEB_CUSTOM_DOMAIN_NAME, '')
 
 module containerAppEnvironment './containers/container-app-environment.bicep' = {
   name: 'containerAppEnvironment'
@@ -181,13 +187,34 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerAppEnvironmentId: containerAppEnvironment.outputs.id
     userAssignedIdentityId: webAppServiceIdentity.outputs.id
     containerRegistryName: containerRegistry.outputs.name
-    containerCpuCoreCount: settings.web.container.containerCpuCoreCount
-    containerMemory: settings.web.container.containerMemory
-    containerMinReplicas: settings.web.scale.containerMinReplicas
-    containerMaxReplicas: settings.web.scale.containerMaxReplicas
+    containerCpuCoreCount: stringOrDefault(envVars.SERVICE_WEB_CONTAINER_CPU_CORE_COUNT, '0.5')
+    containerMemory: stringOrDefault(envVars.SERVICE_WEB_CONTAINER_MEMORY, '1.0Gi')
+    containerMinReplicas: intOrDefault(envVars.SERVICE_WEB_CONTAINER_MIN_REPLICAS, 0)
+    containerMaxReplicas: intOrDefault(envVars.SERVICE_WEB_CONTAINER_MAX_REPLICAS, 1)
     customDomainName: webAppServiceCustomDomainName
     certificateId: containerAppEnvironment.outputs.webAppServiceCertificateId
-    env: union(webAppEnv, settings.web.env)
+    env: union(webAppEnv, [
+      {
+        name: 'NEXT_COMPRESS'
+        value: stringOrDefault(envVars.NEXT_COMPRESS, 'false')
+      }
+      {
+        name: 'NODE_ENV'
+        value: stringOrDefault(envVars.NODE_ENV, 'production')
+      }
+      {
+        name: 'PROJECT_NAME'
+        value: projectName
+      }
+      {
+        name: 'SERVICE_WEB_MIN_LOG_LEVEL'
+        value: stringOrDefault(envVars.SERVICE_WEB_MIN_LOG_LEVEL, '30')
+      }
+      {
+        name: 'SERVICE_WEB_SERVICE_NAME'
+        value: webAppServiceName
+      }
+    ])
     targetPort: 3000
   }
 }

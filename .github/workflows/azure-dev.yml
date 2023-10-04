@@ -88,6 +88,16 @@ jobs:
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Create .env.local file
+        run: .azure/scripts/create-env-local.ps1
+        shell: pwsh
+        env:
+          SERVICE_WEB_CONTAINER_CPU_CORE_COUNT: ${{ vars.SERVICE_WEB_CONTAINER_CPU_CORE_COUNT }}
+          SERVICE_WEB_CONTAINER_MEMORY: ${{ vars.SERVICE_WEB_CONTAINER_MEMORY }}
+          SERVICE_WEB_CONTAINER_MIN_REPLICAS: ${{ vars.SERVICE_WEB_CONTAINER_MIN_REPLICAS }}
+          SERVICE_WEB_CONTAINER_MAX_REPLICAS: ${{ vars.SERVICE_WEB_CONTAINER_MAX_REPLICAS }}
+          SERVICE_WEB_CUSTOM_DOMAIN_NAME: ${{ vars.SERVICE_WEB_CUSTOM_DOMAIN_NAME }}
+
       - name: Provision Infrastructure
         run: azd provision --no-prompt
         shell: pwsh
@@ -95,7 +105,6 @@ jobs:
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          SERVICE_WEB_CONTAINER_MIN_REPLICAS: ${{ vars.SERVICE_WEB_CONTAINER_MIN_REPLICAS }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -104,4 +113,3 @@ jobs:
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          SERVICE_WEB_CONTAINER_MIN_REPLICAS: ${{ vars.SERVICE_WEB_CONTAINER_MIN_REPLICAS }}

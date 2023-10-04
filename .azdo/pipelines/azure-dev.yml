@@ -24,7 +24,14 @@ variables:
     value: 'production'
 
 jobs:
-- deployment: 'deploy'
+- job: init
+  steps:
+  - pwsh: |
+      Write-Output "environment is set to '$(env_name)'"
+    displayName: Show environment
+
+- deployment: deploy
+  dependsOn: init
   condition: ne(variables['env_name'], 'unknown')
   environment: '$(env_name)'
   # Use azd provided container image that has azd, infra, multi-language build tools pre-installed
@@ -33,40 +40,42 @@ jobs:
     runOnce:
       deploy:
         steps:
-          - checkout: self
+        - checkout: self
 
-          - pwsh: |
-              Write-Output "environment is set to '$(env_name)'"
-            displayName: Show environment
+        - pwsh: |
+            Write-Output "environment is set to '$(env_name)'"
+          displayName: Show environment
 
-          - pwsh: |
-              azd config set auth.useAzCliAuth "true"
-            displayName: Configure AZD to Use AZ CLI Authentication
+        - pwsh: |
+            .azure/scripts/create-env-local.ps1
+          displayName: Create .env.local file
 
-          - task: AzureCLI@2
-            displayName: Provision Infrastructure
-            inputs:
-              azureSubscription: azconnection
-              scriptType: pscore
-              scriptLocation: inlineScript
-              workingDirectory: $(System.DefaultWorkingDirectory)
-              inlineScript: |
-                azd provision --no-prompt
-            env:
-              AZURE_ENV_NAME: $(AZURE_ENV_NAME)
-              AZURE_LOCATION: $(AZURE_LOCATION)
-              AZURE_SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+        - pwsh: |
+            azd config set auth.useAzCliAuth "true"
+          displayName: Configure AZD to Use AZ CLI Authentication
 
-          - task: AzureCLI@2
-            displayName: Deploy Application
-            inputs:
-              azureSubscription: azconnection
-              scriptType: pscore
-              scriptLocation: inlineScript
-              workingDirectory: $(System.DefaultWorkingDirectory)
-              inlineScript: |
-                azd deploy --no-prompt
-            env:
-              AZURE_ENV_NAME: $(AZURE_ENV_NAME)
-              AZURE_LOCATION: $(AZURE_LOCATION)
-              AZURE_SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+        - task: AzureCLI@2
+          displayName: Provision Infrastructure
+          inputs:
+            azureSubscription: azconnection
+            scriptType: pscore
+            scriptLocation: inlineScript
+            inlineScript: |
+              azd provision --no-prompt
+          env:
+            AZURE_ENV_NAME: $(AZURE_ENV_NAME)
+            AZURE_LOCATION: $(AZURE_LOCATION)
+            AZURE_SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+
+        - task: AzureCLI@2
+          displayName: Deploy Application
+          inputs:
+            azureSubscription: azconnection
+            scriptType: pscore
+            scriptLocation: inlineScript
+            inlineScript: |
+              azd deploy --no-prompt
+          env:
+            AZURE_ENV_NAME: $(AZURE_ENV_NAME)
+            AZURE_LOCATION: $(AZURE_LOCATION)
+            AZURE_SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
