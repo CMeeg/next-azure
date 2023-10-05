@@ -265,3 +265,46 @@ If you add additional environment variables for use in your app and want to over
 
 > The first time you run the pipeline it may ask you to permit access to the `production` Environment and Variable group, which you should allow.
 
+## Adding a custom domain name
+
+To add a custom domain name to your container app you will need to add an environment variable named `SERVICE_WEB_CUSTOM_DOMAIN_NAME`.
+
+For example, to set the domain name for the container app to `www.example.com` you would add an environment variable `SERVICE_WEB_CUSTOM_DOMAIN_NAME=www.example.com`:
+
+* In your local dev environment - to your `.env.local` file
+* In GitHub Actions - as an [Environment variable](#add-environment-variables) in the target environment (e.g. `production`)
+* In Azure DevOps - as a [Variable in the Variable group](#create-a-variable-group-for-your-environment) for the target environment (e.g. `production`)
+
+When you add a custom domain name a redirect rule is automatically added so that if you attempt to navigate to the default domain of the Container App there will be a permanent redirect to the custom domain name - this redirect is configured in `next.config.js`.
+
+### Add a free managed certificate for your custom domain
+
+When you add a custom domain name to your container app (as described above) there is no SSL certificate provided, but Azure provides a facility to add a free managed SSL certificate.
+
+To add the managed certificate to your container app:
+
+* Sign in to the [Azure Portal](https://portal.azure.com)
+* Go to the Container Apps Environment resource that the Container App you added the custom domain name to is located under
+* Go to `Certificates` -> `Managed certificate`
+* Click `Add certificate`
+* Select your `Custom domain` name
+* Choose the appropriate `Hostname record type`
+* Follow the instructions under `Domain name validation`
+  * If you need further instruction there is [official documentation](https://learn.microsoft.com/en-us/azure/container-apps/custom-domains-managed-certificates?pivots=azure-portal#add-a-custom-domain-and-managed-certificate)
+* `Validate` the custom domain name
+* `Add` the certificate
+
+Azure will now provision the certificate. When the `Certificate Status` is `Suceeded` you will need its ID:
+
+* Copy the `Certificate Name`
+* Go to `Overview` -> `JSON View`
+* Copy the `Resource ID`
+* The `Certificate ID` can be formulated using the pattern: `{Resource ID}/managedCertificates/{Certificate Name}`
+
+Next you will need to add an environment variable named `SERVICE_WEB_CUSTOM_DOMAIN_CERT_ID` set to the value of your `Certificate ID`. Follow the same process you followed when adding your custom domain name to add this environment variable so that it sits alongside the custom domain name.
+
+Finally you will need to trigger `azd provision` again - either by running locally or through your pipeline - and verify that the certificate binding has been added to your Container App. To verify you can see what Container Apps are using your managed certificates from the Container Apps Environment resource in Azure Portal or you locate the Container App resource in the Azure Portal and check under `Custom domains`.
+
+> It is possible to automate the creation of managed certificates through Bicep, which would be preferable to the above manual process, but there are a few ["chicken and egg" issues](https://johnnyreilly.com/azure-container-apps-bicep-managed-certificates-custom-domains) that make automation difficult at the moment. In the context of this template it was decided that a manual solution, though not preferable, is the most pragmatic solution.
+>
+> The situation with managed certificates is discussed on this [GitHub issue](https://github.com/microsoft/azure-container-apps/issues/607) so hopefully there will be better support for automation in the future - one to keep an eye on! If a manual approach is not scaleable for your needs have a read through the links provided for some ideas of how others have approached an automated solution.

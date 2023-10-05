@@ -149,33 +149,6 @@ module webAppServiceCdn './cdn/cdn.bicep' = {
 
 var buildId = uniqueString(resourceGroup.id, deployment().name)
 
-var webAppEnv = [
-  {
-    name: 'APP_ENV'
-    value: environmentName
-  }
-  {
-    name: 'BASE_URL'
-    value: webAppServiceUri
-  }
-  {
-    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-    value: appInsights.outputs.connectionString
-  }
-  {
-    name: 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING'
-    value: appInsights.outputs.connectionString
-  }
-  {
-    name: 'NEXT_PUBLIC_BUILD_ID'
-    value: buildId
-  }
-  {
-    name: 'NEXT_PUBLIC_CDN_URL'
-    value: webAppServiceCdn.outputs.endpointUri
-  }
-]
-
 module webAppServiceContainerApp './containers/container-app.bicep' = {
   name: '${webAppServiceName}-container-app'
   scope: resourceGroup
@@ -192,10 +165,34 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerMaxReplicas: intOrDefault(envVars.SERVICE_WEB_CONTAINER_MAX_REPLICAS, 1)
     customDomainName: webAppServiceCustomDomainName
     certificateId: stringOrDefault(envVars.SERVICE_WEB_CUSTOM_DOMAIN_CERT_ID, '')
-    env: union(webAppEnv, [
+    env: [
+      {
+        name: 'APP_ENV'
+        value: environmentName
+      }
+      {
+        name: 'BASE_URL'
+        value: webAppServiceUri
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.outputs.connectionString
+      }
       {
         name: 'NEXT_COMPRESS'
         value: stringOrDefault(envVars.NEXT_COMPRESS, 'false')
+      }
+      {
+        name: 'NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.outputs.connectionString
+      }
+      {
+        name: 'NEXT_PUBLIC_BUILD_ID'
+        value: buildId
+      }
+      {
+        name: 'NEXT_PUBLIC_CDN_URL'
+        value: webAppServiceCdn.outputs.endpointUri
       }
       {
         name: 'NODE_ENV'
@@ -206,6 +203,10 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
         value: projectName
       }
       {
+        name: 'SERVICE_WEB_CUSTOM_DOMAIN_NAME'
+        value: stringOrDefault(envVars.SERVICE_WEB_CUSTOM_DOMAIN_NAME, '')
+      }
+      {
         name: 'SERVICE_WEB_MIN_LOG_LEVEL'
         value: stringOrDefault(envVars.SERVICE_WEB_MIN_LOG_LEVEL, '30')
       }
@@ -213,7 +214,7 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
         name: 'SERVICE_WEB_SERVICE_NAME'
         value: webAppServiceName
       }
-    ])
+    ]
     targetPort: 3000
   }
 }
