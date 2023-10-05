@@ -12,7 +12,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2022-12-01' =
     name: 'Basic'
   }
   properties: {
-    // TODO: This is enabled because of the error when running `azd deploy`: "Cannot perform credential operations for {resourceGroupPath}/providers/Microsoft.ContainerRegistry/registries/{containerRegistryName} as admin user is disabled" - would prefer to disable though
+    // This is enabled because of an error when running `azd deploy`: "Cannot perform credential operations for {resourceGroupPath}/providers/Microsoft.ContainerRegistry/registries/{containerRegistryName} as admin user is disabled" - would prefer to disable though
     adminUserEnabled: true
   }
 }

@@ -219,9 +219,6 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
   }
 }
 
-// TODO: Key vault?
-// TODO: Storage?
-
 // azd outputs
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
