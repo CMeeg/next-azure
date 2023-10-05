@@ -101,7 +101,6 @@ module containerAppEnvironment './containers/container-app-environment.bicep' = 
     location: location
     tags: tags
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
-    webAppServiceCustomDomainName: webAppServiceCustomDomainName
   }
 }
 
@@ -192,7 +191,7 @@ module webAppServiceContainerApp './containers/container-app.bicep' = {
     containerMinReplicas: intOrDefault(envVars.SERVICE_WEB_CONTAINER_MIN_REPLICAS, 0)
     containerMaxReplicas: intOrDefault(envVars.SERVICE_WEB_CONTAINER_MAX_REPLICAS, 1)
     customDomainName: webAppServiceCustomDomainName
-    certificateId: containerAppEnvironment.outputs.webAppServiceCertificateId
+    certificateId: stringOrDefault(envVars.SERVICE_WEB_CUSTOM_DOMAIN_CERT_ID, '')
     env: union(webAppEnv, [
       {
         name: 'NEXT_COMPRESS'

@@ -44,11 +44,11 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         corsPolicy: {
           allowedOrigins: union([ 'https://portal.azure.com', 'https://ms.portal.azure.com' ], allowedOrigins)
         }
-        customDomains: !empty(customDomainName) && !empty(certificateId) ? [
+        customDomains: !empty(customDomainName) ? [
           {
             name: customDomainName
-            certificateId: certificateId
-            bindingType: 'SniEnabled'
+            certificateId: !empty(certificateId) ? certificateId : null
+            bindingType: !empty(certificateId) ? 'SniEnabled' : 'Disabled'
           }
         ] : null
       } : null
