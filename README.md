@@ -1,5 +1,12 @@
 # next-azure
 
+> [!NOTE]
+> I've created a new [template for deploying a Next.js v13 app to Azure using the Azure Developer CLI](https://github.com/CMeeg/nextjs-aca). The new template retains all of the functionality of this one so I recommend using it for new projects.
+>
+> I will no longer maintain the code in this repository, but I will be keeping it here for reference.
+
+---
+
 This repository contains a [Create Next App](https://nextjs.org/docs/api-reference/create-next-app) example for deploying a Next.js v12 app to Microsoft Azure App Services (including a CDN for static assets, and Application Insights for monitoring) via Azure DevOps Pipelines.
 
 The Next.js app included in this example is the same app created by the default Create Next App output, but with some additional files, components and config changes to support deployment to Azure.
